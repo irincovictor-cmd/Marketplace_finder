@@ -1,23 +1,25 @@
 # FlipRadar Issue Tracker
 
-Last reviewed: October 23, 2026
+Last reviewed: October 23, 2026 — Sprint 1 implementation
 
 This log separates **Open**, **Resolved (needs regression testing)**, and **Investigating** items. Screenshots and observed behavior are from manual Android/GitHub Pages testing. Avoid exposing Apify tokens in reports.
 
 ## Open — priority order
 
-### FR-001 — All-category scan is too slow (High)
+### FR-001 — All-category scan is too slow (High; optimization implemented, needs phone test)
 - **Observed:** Search UI showed `Searching "laptop" (4 of 13)` during an All-category scan; user reported long wait.
 - **Cause confirmed in code:** `refresh()` loops over 13 keyword requests with `await fetch(...)` inside a sequential `for` loop. Each actor run can take several seconds; total time accumulates.
 - **Impact:** Slow response, repeated Apify credit consumption, little progress feedback; search screen continues showing previously saved results during the scan.
 - **Suggested approach:** Start with an explicit single-category/default scan; offer optional All scan with an estimated request count; show per-keyword progress and elapsed time; add cancellation and partial-result handling. Investigate controlled concurrency (e.g. 2 concurrent actor runs), actor batching if supported, and deduplication/caching. Compare runtime and Apify usage before/after; do not assume concurrency reduces billable work.
-- **Status:** Open; no optimization implemented yet.
+- **Sprint 1 implementation:** Up to 2 concurrent keyword requests, progress updates with elapsed time and failure counts, and incremental per-keyword persistence. No scan cancellation, caching, or timing benchmark yet. Two concurrent requests can increase simultaneous Apify usage; total cost is not guaranteed to decrease.
+- **Status:** Implemented; **needs live timing/credit regression testing**.
 
-### FR-002 — Loaded listings vs visible results unclear (High)
+### FR-002 — Loaded listings vs visible results unclear (High; breakdown implemented, needs phone test)
 - **Observed:** 99 clean listings loaded, but only 2 displayed with Bohol-only enabled and a ₱50,000 price cap. Switching category to All still showed 2.
 - **Possible causes:** Bohol filter, category, budget, keyword, source location, and/or duplicate records. Exact counts per filter not yet measured.
 - **Suggested approach:** Show a transparent funnel: fetched → cleaned → under budget → selected category → Bohol matches; include counts and explanatory empty states. Test with Bohol-only toggled off without spending API credits.
-- **Status:** Investigating.
+- **Sprint 1 implementation:** Search now shows loaded → keyword → budget → category → location counts. This reports client-side filtering, not actor-side rejections or raw scraped counts.
+- **Status:** Breakdown implemented; **root cause of 99 → 2 still investigating**.
 
 ### FR-003 — Search coverage may be too narrow (Medium)
 - **Current configuration:** Tagbilaran center (9.6477, 123.8547), `radiusKm: 40`, `maxPagesPerUrl: 1`, `daysSinceListed: "7"`, response `limit=60` per keyword.
@@ -37,10 +39,11 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - **Suggested approach:** Display sample size/confidence, improve model/variant matching, distinguish asking prices from actual resale values, and permit manual resale estimates.
 - **Status:** Open.
 
-### FR-006 — Partial scan failures discard new results (Medium)
+### FR-006 — Partial scan failures discard new results (Medium; fixed, needs phone test)
 - **Cause in code:** `refresh()` collects results across keywords but only persists `all` after the entire loop. A later HTTP error leaves earlier successful keyword results unapplied.
 - **Suggested approach:** Save successful batches incrementally; show failures per keyword and a retry button.
-- **Status:** Open.
+- **Sprint 1 implementation:** Each successful keyword batch replaces that keyword's saved listings immediately and persists locally. Errors are shown per keyword at completion, and successful batches remain saved.
+- **Status:** Implemented; **needs live partial-failure testing**.
 
 ### FR-007 — Client-side token and external listing data hardening (Medium)
 - **Current design:** Apify token stored in browser localStorage and included in the request URL; listing content and URLs are interpolated into HTML.
@@ -74,3 +77,13 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - Re-test on the phone after each deployment and hard refresh.
 - Record: category, keyword, budget, Bohol toggle, number fetched/cleaned/shown, elapsed time, Apify runs/credits, and any error text.
 - Avoid running a 13-keyword scan solely for debugging if a single-keyword reproduction will suffice.
+
+## Sprint 1 verification checklist (pending)
+
+- [ ] Single-category scan succeeds and preserves Facebook and GSMArena links.
+- [ ] All-category scan shows no more than two active requests and finishes faster than prior sequential behavior; record elapsed time and Apify usage.
+- [ ] Progress increments until all 13 keywords complete; switching tabs does not lose results.
+- [ ] Simulate one failed keyword and verify successful keyword results remain saved.
+- [ ] Confirm breakdown changes when toggling Bohol only and changing category without triggering Apify.
+- [ ] Confirm search location, radius, listing age, and depth are unchanged.
+- [ ] Check duplicate listings and localStorage size after repeated scans.
