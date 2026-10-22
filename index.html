@@ -51,7 +51,7 @@ nav button.on{color:var(--ac);font-weight:700}
 var BO=["Tagbilaran","Baclayon","Jagna","Tubigon","Panglao","Dauis","Duero"];
 var LOCS={Bohol:{lat:9.6477,lon:123.8547},Cebu:{lat:10.3157,lon:123.8854},"Negros Oriental":{lat:9.3068,lon:123.3054},Leyte:{lat:11.2433,lon:125.0042}};
 var PROVINCES=Object.keys(LOCS);
-function locName(l){var c=String(l.c||"").trim(),p=String(l.province||"").trim();if(p)return p;if(BO.some(function(x){return x.toLowerCase()==c.toLowerCase()}))return "Bohol";return ""}
+function locName(l){var c=String(l.c||"").trim(),p=String(l.province||"").trim();if(p)return p;if(BO.some(function(x){return x.toLowerCase()==c.toLowerCase()}))return "Bohol";if(/cebu/i.test(c))return "Cebu";if(/dumaguete|valencia|sibulan|bacong/i.test(c))return "Negros Oriental";if(/tacloban|ormoc|palo/i.test(c))return "Leyte";return ""}
 function locMatches(l){if(S.province=="All")return true;return locName(l).toLowerCase()==S.province.toLowerCase()}
 function locOptions(){return ["All"].concat(PROVINCES).map(function(p){return '<option value="'+p+'"'+(S.province==p?' selected':'')+'>'+p+'</option>'}).join("")}
 
