@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FlipRadar</title>
+<style>
+:root{--bg:#f3f4f8;--cd:#fff;--tx:#141a2e;--mu:#657089;--ln:#dfe3ee;--in:#eaedf5;--ac:#f58a0a;--gr:#12803f;--rd:#c62828;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a0f1f;--cd:#141b30;--tx:#f0f2fa;--mu:#8d97b6;--ln:#252d4a;--in:#1c2542;--ac:#ff9a1f;--gr:#3ddc84;--rd:#ff7b7b}}
+:root[data-theme="dark"]{--bg:#0a0f1f;--cd:#141b30;--tx:#f0f2fa;--mu:#8d97b6;--ln:#252d4a;--in:#1c2542;--ac:#ff9a1f;--gr:#3ddc84;--rd:#ff7b7b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:88px}
+.w{max-width:520px;margin:0 auto;padding:16px 14px}
+h1{margin:0;font-size:26px;letter-spacing:-.5px}h1 i{font-style:normal;color:var(--ac)}
+h2{font-size:17px;margin:20px 0 8px}
+.mu{color:var(--mu);font-size:13px}
+.c{background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:12px;margin:8px 0}
+.row{display:flex;gap:10px;align-items:center}.f1{flex:1;min-width:0}.rt{text-align:right}
+.th{width:46px;height:46px;border-radius:10px;background:var(--in);display:grid;place-items:center;font-size:24px;position:relative;overflow:hidden}
+.th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bd{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-top:3px}
+.bd.g{background:var(--gr);color:#fff}.bd.l{background:color-mix(in srgb,var(--gr) 35%,var(--cd));color:var(--tx)}.bd.o{background:var(--ac);color:#1a1000}.bd.x{background:var(--rd);color:#fff}
+input,select{width:100%;padding:11px;border-radius:10px;border:1px solid var(--ln);background:var(--in);color:var(--tx);font:inherit}
+label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
+button{font:inherit;cursor:pointer}
+.btn{width:100%;padding:12px;border:0;border-radius:12px;background:var(--ac);color:#1a1000;font-weight:700;margin-top:8px;display:block;text-align:center;text-decoration:none}
+.btn.s{background:var(--in);color:var(--tx)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0}
+.chip{white-space:nowrap;padding:7px 12px;border-radius:99px;border:1px solid var(--ln);background:var(--cd);color:var(--tx)}
+.chip.on{background:var(--ac);color:#1a1000;border-color:var(--ac)}
+.big{font-size:30px;font-weight:800}
+.g3{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.up{color:var(--gr)}.dn{color:var(--rd)}
+.note{font-size:12px;color:var(--mu);border:1px dashed var(--ln);border-radius:10px;padding:8px;margin:10px 0}
+.sw{width:46px;height:26px;border-radius:99px;border:0;background:var(--ln);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+.sw.on{background:var(--gr)}.sw.on::after{left:23px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--cd);border-top:1px solid var(--ln);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;border:0;background:none;color:var(--mu);font-size:11px;padding:4px 0}
+nav button span{display:block;font-size:20px}
+nav button.on{color:var(--ac);font-weight:700}
+</style></head><body>
+<div class="w" id="app"></div>
+<nav>
+<button data-a="tab" data-t="home"><span>🏠</span>Home</button>
+<button data-a="tab" data-t="search"><span>🔍</span>Search</button>
+<button data-a="tab" data-t="watch"><span>🔔</span>Watchlist</button>
+<button data-a="tab" data-t="saved"><span>♥</span>Saved</button>
+<button data-a="tab" data-t="calc"><span>₱</span>Profit</button>
+</nav>
+<script>
+var BO=["Tagbilaran","Baclayon","Jagna","Tubigon","Panglao","Dauis","Duero"];
+var IC={Phones:"📱",Laptops:"💻","PC Parts":"🖥️",Consoles:"🎮",Electronics:"🎧"};
+var CATS=Object.keys(IC);
+// market stats per model: [low, average, high] (sample estimates)
+var M={ip14:[21000,24500,27500],ip13pm:[24000,27000,30000],ip16p:[44000,48000,52000],ip11:[9000,11000,13000],rn12:[6500,7800,9000],a54:[10000,12000,14000],ps5:[18000,21000,24000],rtx:[11000,13500,16000],nitro:[22000,25000,28000],leg:[30000,35000,40000],ipad:[11000,13500,16000],buds:[1500,2200,3000]};
+var L=[
+{id:1,t:"iPhone 14 128GB",m:"ip14",p:24500,c:"Tagbilaran",h:3,g:"Phones"},
+{id:2,t:"iPhone 14 128GB, 3 months old",m:"ip14",p:22000,c:"Baclayon",h:6,g:"Phones"},
+{id:3,t:"iPhone 13 Pro Max",m:"ip13pm",p:23000,c:"Jagna",h:9,g:"Phones"},
+{id:4,t:"iPhone 16 Pro 256GB",m:"ip16p",p:42000,c:"Tubigon",h:12,g:"Phones"},
+{id:5,t:"iPhone 11 128GB",m:"ip11",p:8500,c:"Cebu City",h:5,g:"Phones"},
+{id:6,t:"Redmi Note 12 8/256",m:"rn12",p:6200,c:"Tagbilaran",h:2,g:"Phones"},
+{id:7,t:"Samsung Galaxy A54",m:"a54",p:9500,c:"Panglao",h:20,g:"Phones"},
+{id:8,t:"PS5 Digital Edition",m:"ps5",p:18500,c:"Dauis",h:4,g:"Consoles"},
+{id:9,t:"PS5 Disc with 2 controllers",m:"ps5",p:23500,c:"Tagbilaran",h:30,g:"Consoles"},
+{id:10,t:"RTX 3060 12GB",m:"rtx",p:11500,c:"Tagbilaran",h:7,g:"PC Parts"},
+{id:11,t:"Acer Nitro 5 Gaming Laptop",m:"nitro",p:19800,c:"Duero",h:10,g:"Laptops"},
+{id:12,t:"Lenovo Legion 5",m:"leg",p:36000,c:"Mandaue",h:15,g:"Laptops"},
+{id:13,t:"iPad 9th Gen 64GB",m:"ipad",p:12000,c:"Tubigon",h:26,g:"Electronics"},
+{id:14,t:"Wireless earbuds, sealed",m:"buds",p:1300,c:"Jagna",h:8,g:"Electronics"}
+];
+function ld(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var S={t:"home",d:0,q:"",max:"",bo:true,so:"d",cat:"",cb:"",cs:"",cc:"",live:ld("fr_live",[]),up:ld("fr_up",{}),busy:0,msg:"",tok:ld("fr_tok",""),
+sv:ld("fr_saved",[]),w:ld("fr_watch",[{k:"iphone",max:25000,on:true},{k:"ps5",max:20000,on:true}])};
+var $=function(i){return document.getElementById(i)};
+function P(n){return "₱"+Math.round(n).toLocaleString("en-PH")}
+function SP(n){return (n<0?"−":"+")+P(Math.abs(n))}
+function ago(h){return h<1?"just now":h<24?h+"h ago":Math.floor(h/24)+"d ago"}
+function A(){return S.live.length?S.live:L}
+function F(i){return L.concat(S.live).filter(function(l){return l.id==i})[0]}
+function ST(l){return l.s||M[l.m]}
+function isB(l){return l.b!==undefined?l.b:BO.indexOf(l.c)>-1}
+function sc(l){var a=ST(l)[1],pc=(a-l.p)/a*100;return Math.max(0,Math.min(100,Math.round(50+pc*1.75)))}
+function lb(s){return s>=80?["Great Deal","g"]:s>=65?["Good Deal","l"]:s>=50?["Fair Deal","o"]:["Pricey","x"]}
+function card(l){var s=sc(l),b=lb(s);return '<div class="c row" data-a="open" data-i="'+l.id+'"><div class="th">'+IC[l.g]+im(l)+'</div><div class="f1"><b>'+l.t+'</b><div class="mu">'+l.c+' · '+ago(l.h)+'</div></div><div class="rt"><b>'+P(l.p)+'</b><br><span class="bd '+b[1]+'">'+b[0]+'</span></div></div>'}
+function hd(){return '<h1>Flip<i>Radar</i></h1><div class="mu">Find deals. Flip smarter.</div><div class="note">'+(S.live.length?'Showing live listings from Apify. Refresh them in the Watchlist tab.':'Showing sample listings. Open the Watchlist tab and tap Refresh live listings to load real ones.')+'</div>'}
+function vHome(){var top=A().filter(isB).sort(function(a,b){return sc(b)-sc(a)}).slice(0,5);
+return hd()+'<div class="chips">'+CATS.map(function(c){return '<button class="chip" data-a="cat" data-c="'+c+'">'+IC[c]+' '+c+'</button>'}).join("")+'</div><button class="btn s" data-a="tab" data-t="search">🔍 Search for a device</button><h2>Best deals in Bohol</h2>'+top.map(card).join("")}
+function vSearch(){return '<h1>Search</h1><label>What are you looking for?</label><input id="q" value="'+S.q+'" placeholder="e.g. iphone 13" autocomplete="off"><div class="g3"><div><label>Max price (₱)</label><input id="mx" type="number" inputmode="numeric" value="'+S.max+'" placeholder="20000"></div><div><label>Sort by</label><select id="so"><option value="d">Best deal</option><option value="p">Lowest price</option><option value="n">Newest</option></select></div></div><div class="chips"><button class="chip'+(S.cat?'':' on')+'" data-a="cat" data-c="">All</button>'+CATS.map(function(c){return '<button class="chip'+(S.cat==c?' on':'')+'" data-a="cat" data-c="'+c+'">'+c+'</button>'}).join("")+'</div><div class="row"><div class="f1">Bohol only</div><button class="sw'+(S.bo?' on':'')+'" data-a="bo" aria-label="Bohol only"></button></div><button class="btn" data-a="scan">Scan live listings in this budget</button><div class="note" id="msg">'+(S.msg||"Pick a category and a max price, then scan. Each keyword costs about 5 to 15 cents of Apify credit.")+'</div><div class="mu" id="cnt" style="margin-top:10px"></div><div id="res"></div>'}
+function res(){var q=S.q.toLowerCase().split(/\s+/).filter(Boolean),mx=parseFloat(S.max)||1e12;
+var r=A().filter(function(l){var t=l.t.toLowerCase();return q.every(function(x){return t.indexOf(x)>-1})&&l.p<=mx&&(!S.bo||isB(l))&&(!S.cat||l.g==S.cat)});
+r.sort(function(a,b){return S.so=="p"?a.p-b.p:S.so=="n"?a.h-b.h:sc(b)-sc(a)});
+$("cnt").textContent=r.length+" result"+(r.length==1?"":"s");
+$("res").innerHTML=r.length?r.map(card).join(""):'<div class="c mu">No matches. Try a higher max price or turn off Bohol only.</div>'}
+function vDet(l){var a=ST(l),s=sc(l),b=lb(s),sd=S.sv.indexOf(l.id)>-1,pl=a[0]-l.p,ph=a[2]-l.p;
+return '<button class="chip" data-a="back">‹ Back</button><div class="c" style="margin-top:12px"><div class="th" style="width:100%;height:110px;font-size:56px">'+IC[l.g]+im(l)+'</div><h2 style="margin-top:12px">'+l.t+'</h2><div class="row"><span class="big">'+P(l.p)+'</span><span class="bd '+b[1]+'">'+b[0]+'</span></div><div class="mu">Listed '+ago(l.h)+' · '+l.c+'</div></div><div class="g3"><div class="c"><div class="mu">Estimated value</div><b>'+P(a[0])+' to '+P(a[2])+'</b><div class="mu">Average '+P(a[1])+(l.w?' (rough estimate)':'')+'</div></div><div class="c"><div class="mu">Deal score</div><b class="big">'+s+'</b>/100</div></div><div class="c"><div class="mu">Potential profit (est.)</div><b class="'+(ph>=0?'up':'dn')+'">'+SP(pl)+' to '+SP(ph)+'</b></div><button class="btn" data-a="calc" data-i="'+l.id+'">Calculate profit</button><a class="btn s" target="_blank" rel="noopener" href="'+(l.u||"https://www.facebook.com/marketplace/search/?query="+encodeURIComponent(l.t))+'">'+(l.u?"View on Marketplace":"Search Marketplace (sample)")+'</a>'+(l.u?'<a class="btn s" href="intent://'+l.u.replace(/^https?:\/\//,"")+'#Intent;scheme=https;package=com.facebook.katana;end">Open in Facebook app</a>':'')+''+(l.i?'<a class="btn s" target="_blank" rel="noopener" href="'+l.i+'">Open photo</a>':'')+'<button class="btn s" data-a="save" data-i="'+l.id+'">'+(sd?'♥ Saved. Tap to remove':'♡ Save listing')+'</button>'}
+function mt(w){return A().filter(function(l){return l.t.toLowerCase().indexOf(w.k.toLowerCase())>-1&&l.p<=w.max&&isB(l)}).length}
+function vWatch(){return '<h1>Watchlist</h1><div class="mu">Counts show Bohol listings at or under your max price.</div><label>Apify token (saved only on this phone)</label><input id="tok" type="password" autocomplete="off" value="'+S.tok+'" placeholder="paste your Apify API token"><button class="btn" data-a="wall">Refresh live listings</button><div class="note" id="msg">'+(S.msg||"Each refresh scrapes up to 48 listings per active keyword, about 5 to 15 cents of Apify credit.")+'</div><div class="c"><label style="margin-top:0">Model or keyword</label><input id="wk" placeholder="e.g. rtx 3060"><label>Max price (₱)</label><input id="wm" type="number" inputmode="numeric" placeholder="12000"><button class="btn" data-a="wadd">Add to watchlist</button></div>'+(S.w.length?S.w.map(function(w,i){var n=mt(w);return '<div class="c row"><div class="f1" data-a="wgo" data-i="'+i+'"><b>'+w.k+'</b><div class="mu">Max '+P(w.max)+' · Bohol · '+n+' match'+(n==1?'':'es')+'</div><div class="mu">'+(S.up[w.k]?'Updated '+ago(Math.floor((Date.now()-S.up[w.k])/36e5)):'Not refreshed yet')+'</div></div><button class="chip" data-a="wref" data-i="'+i+'" aria-label="Refresh">↻</button><button class="sw'+(w.on?' on':'')+'" data-a="wtog" data-i="'+i+'" aria-label="Alerts on or off"></button><button class="chip" data-a="wdel" data-i="'+i+'" aria-label="Delete">✕</button></div>'}).join(""):'<div class="c mu">Nothing here yet. Add a model and the most you would pay.</div>')}
+function vSaved(){var r=L.concat(S.live).filter(function(l){return S.sv.indexOf(l.id)>-1});return '<h1>Saved</h1>'+(r.length?r.map(card).join(""):'<div class="c mu">No saved listings yet. Open a listing and tap Save.</div>')}
+function vCalc(){return '<h1>Profit calculator</h1><label>Buying price (₱)</label><input id="cb" type="number" inputmode="numeric" value="'+S.cb+'"><label>Estimated selling price (₱)</label><input id="cs" type="number" inputmode="numeric" value="'+S.cs+'"><label>Additional costs (₱): cleaning, repairs, shipping</label><input id="cc" type="number" inputmode="numeric" value="'+S.cc+'"><div class="chips" style="margin-top:8px"><button class="chip" data-a="add" data-v="500">+ ₱500</button><button class="chip" data-a="add" data-v="1000">+ ₱1,000</button><button class="chip" data-a="add" data-v="2000">+ ₱2,000</button></div><div class="c" id="out" style="margin-top:12px"></div>'}
+function co(){var b=parseFloat(S.cb)||0,s=parseFloat(S.cs)||0,c=parseFloat(S.cc)||0,p=s-b-c,r=b>0?p/b*100:0;
+$("out").innerHTML='<div class="mu">Estimated profit</div><div class="big '+(p>=0?'up':'dn')+'">'+SP(p)+'</div><div class="mu">ROI '+Math.round(r)+'% of buying price</div>'}
+function R(){var v=S.d?vDet(F(S.d)):{home:vHome,search:vSearch,watch:vWatch,saved:vSaved,calc:vCalc}[S.t]();
+$("app").innerHTML=v;
+document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.t==S.t&&!S.d)});
+if(!S.d){if(S.t=="search"){$("so").value=S.so;res()}if(S.t=="calc")co()}}
+document.addEventListener("click",function(e){var el=e.target.closest("[data-a]");if(!el)return;var a=el.dataset.a,d=el.dataset,i=isNaN(+d.i)?d.i:+d.i;
+if(a=="tab"){S.t=d.t;S.d=0;window.scrollTo(0,0)}
+else if(a=="open"){S.d=i;window.scrollTo(0,0)}
+else if(a=="back"){S.d=0}
+else if(a=="cat"){S.cat=d.c;S.t="search";S.d=0}
+else if(a=="bo"){S.bo=!S.bo}
+else if(a=="save"){var k=S.sv.indexOf(i);if(k>-1)S.sv.splice(k,1);else S.sv.push(i);sv("fr_saved",S.sv)}
+else if(a=="calc"){var l=F(i);S.cb=l.p;S.cs=Math.round(ST(l)[1]);S.cc="";S.d=0;S.t="calc";window.scrollTo(0,0)}
+else if(a=="add"){S.cc=(parseFloat(S.cc)||0)+ +d.v;$("cc").value=S.cc;co();return}
+else if(a=="wadd"){var k2=$("wk").value.trim(),m=parseFloat($("wm").value);if(!k2||!m)return;S.w.unshift({k:k2,max:m,on:true});sv("fr_watch",S.w)}
+else if(a=="wdel"){S.w.splice(i,1);sv("fr_watch",S.w)}
+else if(a=="wtog"){S.w[i].on=!S.w[i].on;sv("fr_watch",S.w)}
+else if(a=="scan"){var mx=parseFloat(S.max);if(!S.cat||!mx){say("Pick a category and enter a max price first.");return}refresh(KW[S.cat].map(function(k){return{k:k}}),mx);return}
+else if(a=="wref"){refresh([S.w[i]]);return}
+else if(a=="wall"){refresh(S.w.filter(function(w){return w.on}));return}
+else if(a=="wgo"){S.q=S.w[i].k;S.max=S.w[i].max;S.bo=true;S.cat="";S.t="search";S.d=0}
+R()});
+document.addEventListener("input",function(e){var id=e.target.id,v=e.target.value;
+if(id=="q"){S.q=v;res()}else if(id=="mx"){S.max=v;res()}else if(id=="so"){S.so=v;res()}
+else if(id=="tok"){S.tok=v.trim();sv("fr_tok",S.tok)}else if(id=="cb"||id=="cs"||id=="cc"){S[id]=v;co()}});
+var AP="Apify";
+function cg(t){t=t.toLowerCase();return /iphone|samsung|galaxy|redmi|xiaomi|oppo|vivo|realme|phone|infinix|tecno/.test(t)?"Phones":/laptop|macbook|nitro|legion|thinkpad|vivobook|ideapad/.test(t)?"Laptops":/ps5|ps4|xbox|switch|nintendo|playstation/.test(t)?"Consoles":/rtx|gtx|ryzen|radeon|ssd|gpu|motherboard|monitor/.test(t)?"PC Parts":"Electronics"}
+function pq(a,q){a=a.slice().sort(function(x,y){return x-y});return a[Math.min(a.length-1,Math.floor(q*(a.length-1)+.5))]}
+var KW={Phones:["iphone","samsung","redmi"],Laptops:["laptop"],Consoles:["ps5","ps4","switch"],"PC Parts":["rtx","ryzen","monitor"],Electronics:["ipad","airpods","smartwatch"]};
+function q3(a){return [Math.round(pq(a,.25)),Math.round(pq(a,.5)),Math.round(pq(a,.75))]}
+function gk(t){return t.toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(Boolean).slice(0,2).join(" ")}
+function im(l){return l.i?'<img src="'+l.i+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':''}
+function gv(x,p){if(p in x)return x[p];var o=x,a=p.split(".");for(var i=0;i<a.length&&o!=null;i++)o=o[a[i]];return o}
+function pr(x){return parseFloat(gv(x,"listing_price.amount"))}
+function clean(it,k,bm){var tk=k.toLowerCase().split(/\s+/).filter(Boolean),now=Date.now()/1000;
+var r=it.filter(function(x){var t=(x.marketplace_listing_title||"").toLowerCase();return !x.is_sold&&!x.is_pending&&pr(x)>0&&tk.every(function(w){return t.indexOf(w)>-1})&&!/pautang|installment|downpayment|\bcase\b|charger|cover|protector|strap|figure|sticker|skin/.test(t)});
+if(!r.length)return [];
+var med=pq(r.map(pr),.5);r=r.filter(function(x){return pr(x)>=med*.3});
+var s=q3(r.map(pr)),gs={};r.forEach(function(x){var g=gk(x.marketplace_listing_title);(gs[g]=gs[g]||[]).push(pr(x))});
+if(bm)r=r.filter(function(x){return pr(x)<=bm});
+return r.map(function(x){var g=gs[gk(x.marketplace_listing_title)],c=gv(x,"location.reverse_geocode.city")||"",st=gv(x,"location.reverse_geocode.state")||"";return{id:"f"+x.id,t:x.marketplace_listing_title,k:k,p:pr(x),c:c,h:Math.max(0,Math.floor((now-x.creation_time)/3600)),g:cg(x.marketplace_listing_title),u:x.listingUrl,i:x.primary_listing_photo_url,s:g.length>=4?q3(g):s,w:g.length<4,b:/bohol/i.test(st)||BO.indexOf(c)>-1}})}
+function em(e){var c=e&&e.code;return c=="bad_token"?"Apify rejected the token. Check it and try again.":c=="no_data"?"The scraper returned no data. Try again.":(e instanceof TypeError)?"Could not reach Apify from this page. Check your connection; the browser may also be blocking the request.":"Refresh failed ("+(c||"unknown")+"). Your previous listings are still saved."}
+function say(t){S.msg=t;var m=$("msg");if(m)m.textContent=t}
+async function refresh(ws,bm){
+if(S.busy||!ws.length)return;
+if(!S.tok){say("Add your Apify token in the Watchlist tab first.");return}
+S.busy=1;var all=[];
+try{for(var j=0;j<ws.length;j++){var w=ws[j];say("Searching \u201c"+w.k+"\u201d ("+(j+1)+" of "+ws.length+"). This takes about 15 seconds.");
+var r=await fetch("https://api.apify.com/v2/acts/curious_coder~facebook-marketplace/run-sync-get-dataset-items?clean=true&limit=60&token="+encodeURIComponent(S.tok),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({searchKeyword:w.k,latitude:9.6477,longitude:123.8547,radiusKm:40,daysSinceListed:7,sortBy:"creation_time_descend",maxPagesPerUrl:1,getListingDetails:false,getAllListingPhotos:false,proxy:{useApifyProxy:true,apifyProxyCountry:"PH"}})});
+if(r.status==401||r.status==403)throw{code:"bad_token"};
+if(!r.ok)throw{code:"http_"+r.status};
+var items=await r.json();
+all=all.concat(clean(Array.isArray(items)?items:[],w.k,bm))}
+var ks=ws.map(function(w){return w.k});
+S.live=S.live.filter(function(l){return ks.indexOf(l.k)<0}).concat(all);
+ks.forEach(function(k){S.up[k]=Date.now()});
+sv("fr_live",S.live);sv("fr_up",S.up);
+say("Loaded "+all.length+" clean listings.")}
+catch(e){say(em(e))}
+S.busy=0;R()}
+R();
+</script></body></html>
