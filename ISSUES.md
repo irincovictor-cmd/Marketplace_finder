@@ -101,3 +101,11 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - **Purpose:** Distinguish a zero-result scan from cleaning exclusions and Bohol-only exclusions. These counts are based on API items returned (up to the request limit), not Facebook's full inventory.
 - **Status:** Code committed; JavaScript syntax checked; Android live test pending.
 - **Caution:** Do not change location assumptions until the actor's NYC-versus-Bohol behavior is investigated separately.
+
+## October 23: province and radius controls
+
+- **Implemented:** Search screen province filter (All, Bohol, Cebu, Negros Oriental, Leyte) and radius options (20, 40, 60, 80, 100, 150 km), saved in localStorage.
+- **Scanning:** Province-specific approximate center coordinates and chosen radius are sent to Apify on the next manual scan. Selecting All filters across saved locations but new scans use the Bohol center as a fallback; All does **not** mean nationwide scanning.
+- **Filtering:** Province filtering of existing saved listings is immediate and free. New Apify records store reverse-geocoded state; older saved records with missing state may be unknown or only matched through a limited city fallback.
+- **Unverified:** The actor previously logged NYC despite Bohol coordinates. Radius/location controls are requested inputs, **not confirmed geographic enforcement**. Validate real run logs before claiming coverage.
+- **Regression checks:** Confirm changing province does not launch a paid scan; radius changes affect next scan; changing tabs preserves selections; scan diagnostics and saved listings remain usable.
