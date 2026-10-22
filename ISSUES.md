@@ -94,3 +94,10 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - **Interpretation:** High budget does not override category and location filters. Root cause of 0 results remains unverified until breakdown counts are inspected. Old message suggests stale GitHub Pages/browser cache or an in-progress scan from a previous deployment.
 - **Implemented:** Animated spinner, progress bar, completed/total counter, and filter-stage-specific empty-state messages. No change to Bohol center, radius, or actor search inputs.
 - **Test:** Refresh page after deployment, confirm spinner and `Scan X/Y` message, compare counts with Bohol-only on/off, and avoid repeated paid scans while diagnosing.
+
+## Sprint 1 continuation: per-keyword diagnostics (October 23, 2026)
+
+- **Implemented:** The Search screen now displays per-keyword raw Apify count, count surviving client-side cleaning, and count recognized as Bohol, plus a summary and failures. Diagnostics are saved locally after a completed scan and can be inspected without paying for another request.
+- **Purpose:** Distinguish a zero-result scan from cleaning exclusions and Bohol-only exclusions. These counts are based on API items returned (up to the request limit), not Facebook's full inventory.
+- **Status:** Code committed; JavaScript syntax checked; Android live test pending.
+- **Caution:** Do not change location assumptions until the actor's NYC-versus-Bohol behavior is investigated separately.
