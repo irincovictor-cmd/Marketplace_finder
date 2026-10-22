@@ -1,0 +1,76 @@
+# FlipRadar Issue Tracker
+
+Last reviewed: October 23, 2026
+
+This log separates **Open**, **Resolved (needs regression testing)**, and **Investigating** items. Screenshots and observed behavior are from manual Android/GitHub Pages testing. Avoid exposing Apify tokens in reports.
+
+## Open — priority order
+
+### FR-001 — All-category scan is too slow (High)
+- **Observed:** Search UI showed `Searching "laptop" (4 of 13)` during an All-category scan; user reported long wait.
+- **Cause confirmed in code:** `refresh()` loops over 13 keyword requests with `await fetch(...)` inside a sequential `for` loop. Each actor run can take several seconds; total time accumulates.
+- **Impact:** Slow response, repeated Apify credit consumption, little progress feedback; search screen continues showing previously saved results during the scan.
+- **Suggested approach:** Start with an explicit single-category/default scan; offer optional All scan with an estimated request count; show per-keyword progress and elapsed time; add cancellation and partial-result handling. Investigate controlled concurrency (e.g. 2 concurrent actor runs), actor batching if supported, and deduplication/caching. Compare runtime and Apify usage before/after; do not assume concurrency reduces billable work.
+- **Status:** Open; no optimization implemented yet.
+
+### FR-002 — Loaded listings vs visible results unclear (High)
+- **Observed:** 99 clean listings loaded, but only 2 displayed with Bohol-only enabled and a ₱50,000 price cap. Switching category to All still showed 2.
+- **Possible causes:** Bohol filter, category, budget, keyword, source location, and/or duplicate records. Exact counts per filter not yet measured.
+- **Suggested approach:** Show a transparent funnel: fetched → cleaned → under budget → selected category → Bohol matches; include counts and explanatory empty states. Test with Bohol-only toggled off without spending API credits.
+- **Status:** Investigating.
+
+### FR-003 — Search coverage may be too narrow (Medium)
+- **Current configuration:** Tagbilaran center (9.6477, 123.8547), `radiusKm: 40`, `maxPagesPerUrl: 1`, `daysSinceListed: "7"`, response `limit=60` per keyword.
+- **Observed:** User reports limited coverage. Prior actor logs showed a NYC Marketplace URL despite Bohol coordinates.
+- **Suggested approach:** Verify how the actor handles location before changing it; expose safe radius, age, and depth settings, with cost warnings and usage comparisons.
+- **Status:** Investigating; **location behavior intentionally deferred at user's request**.
+
+### FR-004 — Bohol location recognition incomplete (Medium)
+- **Cause in code:** `BO` fallback list includes only Tagbilaran, Baclayon, Jagna, Tubigon, Panglao, Dauis, and Duero. `clean()` also checks the state text for "Bohol".
+- **Impact:** Valid Bohol listings may be excluded if state/city metadata is incomplete or formatted differently.
+- **Suggested approach:** Improve normalized location matching and inspect actual Apify records; don't classify unknown locations as confirmed Bohol.
+- **Status:** Open.
+
+### FR-005 — Deal scores can be misleading (Medium)
+- **Observed:** Two Bohol phone results in screenshot both labeled "Pricey"; not independently verified against sold prices.
+- **Cause in code:** Estimated value uses asking-price quartiles from loosely grouped listing titles, sometimes with few comparisons; storage, variant and condition may differ.
+- **Suggested approach:** Display sample size/confidence, improve model/variant matching, distinguish asking prices from actual resale values, and permit manual resale estimates.
+- **Status:** Open.
+
+### FR-006 — Partial scan failures discard new results (Medium)
+- **Cause in code:** `refresh()` collects results across keywords but only persists `all` after the entire loop. A later HTTP error leaves earlier successful keyword results unapplied.
+- **Suggested approach:** Save successful batches incrementally; show failures per keyword and a retry button.
+- **Status:** Open.
+
+### FR-007 — Client-side token and external listing data hardening (Medium)
+- **Current design:** Apify token stored in browser localStorage and included in the request URL; listing content and URLs are interpolated into HTML.
+- **Risks:** URL logging/exposure and untrusted markup/URLs. No compromise reported.
+- **Suggested approach:** Consider Authorization header or backend proxy, escape untrusted listing text, validate outbound URLs, and avoid publishing credentials.
+- **Status:** Open.
+
+## Resolved — verify after deployments
+
+### FR-008 — Apify HTTP 400 validation error
+- **Observed:** `Input is not valid: Field input.daysSinceListed must be string.`
+- **Fix:** Changed `daysSinceListed: 7` to `daysSinceListed: "7"`; improved error reporting to display Apify response details.
+- **Status:** Resolved for this validation error; recheck if actor schema changes.
+
+### FR-009 — Facebook app redirect loses listing/search target
+- **Observed:** Forced `intent://` opened Facebook Marketplace search screen without the expected item.
+- **Fix:** Removed forced app deep link and retained normal HTTPS Marketplace listing/search URLs.
+- **Status:** User reported working.
+
+### FR-010 — All category rejected by scan validation
+- **Observed:** "Pick a category and enter a max price first" even with All selected.
+- **Fix:** All now expands to 13 keywords and asks for confirmation due to possible Apify costs.
+- **Status:** Fixed; however introduced/exposed FR-001's slow 13-search workflow.
+
+### FR-011 — Phone specs lookup requested
+- **Fix:** Added a free GSMArena-restricted web search link for phone listings and basic title cleaning, with a variant-check reminder.
+- **Status:** Implemented; real-world matching accuracy still needs testing.
+
+## Testing notes
+- GitHub Pages hosts a static front end; scans happen only on user action.
+- Re-test on the phone after each deployment and hard refresh.
+- Record: category, keyword, budget, Bohol toggle, number fetched/cleaned/shown, elapsed time, Apify runs/credits, and any error text.
+- Avoid running a 13-keyword scan solely for debugging if a single-keyword reproduction will suffice.
