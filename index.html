@@ -141,7 +141,7 @@ var med=pq(r.map(pr),.5);r=r.filter(function(x){return pr(x)>=med*.3});
 var s=q3(r.map(pr)),gs={};r.forEach(function(x){var g=gk(x.marketplace_listing_title);(gs[g]=gs[g]||[]).push(pr(x))});
 if(bm)r=r.filter(function(x){return pr(x)<=bm});
 return r.map(function(x){var g=gs[gk(x.marketplace_listing_title)],c=gv(x,"location.reverse_geocode.city")||"",st=gv(x,"location.reverse_geocode.state")||"";return{id:"f"+x.id,t:x.marketplace_listing_title,k:k,p:pr(x),c:c,h:Math.max(0,Math.floor((now-x.creation_time)/3600)),g:cg(x.marketplace_listing_title),u:x.listingUrl,i:x.primary_listing_photo_url,s:g.length>=4?q3(g):s,w:g.length<4,b:/bohol/i.test(st)||BO.indexOf(c)>-1}})}
-function em(e){var c=e&&e.code;return c=="bad_token"?"Apify rejected the token. Check it and try again.":c=="no_data"?"The scraper returned no data. Try again.":(e instanceof TypeError)?"Could not reach Apify from this page. Check your connection; the browser may also be blocking the request.":"Refresh failed ("+(c||"unknown")+"). Your previous listings are still saved."}
+function em(e){var c=e&&e.code;return c=="bad_token"?"Apify rejected the token. Check it and try again.":c=="no_data"?"The scraper returned no data. Try again.":(e instanceof TypeError)?"Could not reach Apify from this page. Check your connection; the browser may also be blocking the request.":"Refresh failed ("+(c||"unknown")+")"+(e&&e.detail?": "+e.detail:"")+". Your previous listings are still saved."}
 function say(t){S.msg=t;var m=$("msg");if(m)m.textContent=t}
 async function refresh(ws,bm){
 if(S.busy||!ws.length)return;
@@ -150,7 +150,7 @@ S.busy=1;var all=[];
 try{for(var j=0;j<ws.length;j++){var w=ws[j];say("Searching \u201c"+w.k+"\u201d ("+(j+1)+" of "+ws.length+"). This takes about 15 seconds.");
 var r=await fetch("https://api.apify.com/v2/acts/curious_coder~facebook-marketplace/run-sync-get-dataset-items?clean=true&limit=60&token="+encodeURIComponent(S.tok),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({searchKeyword:w.k,latitude:9.6477,longitude:123.8547,radiusKm:40,daysSinceListed:7,sortBy:"creation_time_descend",maxPagesPerUrl:1,getListingDetails:false,getAllListingPhotos:false,proxy:{useApifyProxy:true,apifyProxyCountry:"PH"}})});
 if(r.status==401||r.status==403)throw{code:"bad_token"};
-if(!r.ok)throw{code:"http_"+r.status};
+if(!r.ok){var detail="";try{var errorBody=await r.text();try{var errorJson=JSON.parse(errorBody);detail=(errorJson.error&&(errorJson.error.message||errorJson.error.type))||errorJson.message||errorJson.detail||""}catch(parseError){detail=errorBody}}catch(readError){}detail=String(detail).replace(/apify_api_[A-Za-z0-9_-]+/g,"[redacted]").slice(0,320);throw{code:"http_"+r.status,detail:detail}}
 var items=await r.json();
 all=all.concat(clean(Array.isArray(items)?items:[],w.k,bm))}
 var ks=ws.map(function(w){return w.k});
