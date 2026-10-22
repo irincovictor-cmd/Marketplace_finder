@@ -30,6 +30,10 @@ FlipRadar tackles problem 1 first. Problem 2 is in the backlog.
 | 3. Alerts | Notify about new matches and price drops while the app is closed | Not started |
 | 4. AI deal analysis | Deal analysis screen with checklist and risk warnings | Not started |
 
+## Current issue tracking
+
+See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and testing notes. Highest priority is the slow sequential 13-keyword All-category scan; next is explaining why loaded listings are filtered out.
+
 ## Next steps (in order)
 
 1. Deploy to GitHub Pages and run the test checklist below.
