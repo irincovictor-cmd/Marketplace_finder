@@ -49,6 +49,12 @@ nav button.on{color:var(--ac);font-weight:700}
 </nav>
 <script>
 var BO=["Tagbilaran","Baclayon","Jagna","Tubigon","Panglao","Dauis","Duero"];
+var LOCS={Bohol:{lat:9.6477,lon:123.8547},Cebu:{lat:10.3157,lon:123.8854},"Negros Oriental":{lat:9.3068,lon:123.3054},Leyte:{lat:11.2433,lon:125.0042}};
+var PROVINCES=Object.keys(LOCS);
+function locName(l){var c=String(l.c||"").trim(),p=String(l.province||"").trim();if(p)return p;if(BO.some(function(x){return x.toLowerCase()==c.toLowerCase()}))return "Bohol";return ""}
+function locMatches(l){if(S.province=="All")return true;return locName(l).toLowerCase()==S.province.toLowerCase()}
+function locOptions(){return ["All"].concat(PROVINCES).map(function(p){return '<option value="'+p+'"'+(S.province==p?' selected':'')+'>'+p+'</option>'}).join("")}
+
 var IC={Phones:"📱",Laptops:"💻","PC Parts":"🖥️",Consoles:"🎮",Electronics:"🎧"};
 var CATS=Object.keys(IC);
 // market stats per model: [low, average, high] (sample estimates)
@@ -71,7 +77,7 @@ var L=[
 ];
 function ld(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-var S={t:"home",d:0,q:"",max:"",bo:true,so:"d",cat:"",cb:"",cs:"",cc:"",live:ld("fr_live",[]),up:ld("fr_up",{}),busy:0,msg:"",tok:ld("fr_tok",""),
+var S={t:"home",d:0,q:"",max:"",bo:true,province:ld("fr_province","Bohol"),radius:ld("fr_radius",40),so:"d",cat:"",cb:"",cs:"",cc:"",live:ld("fr_live",[]),up:ld("fr_up",{}),busy:0,msg:"",tok:ld("fr_tok",""),
 sv:ld("fr_saved",[]),w:ld("fr_watch",[{k:"iphone",max:25000,on:true},{k:"ps5",max:20000,on:true}])};
 var $=function(i){return document.getElementById(i)};
 function P(n){return "₱"+Math.round(n).toLocaleString("en-PH")}
@@ -80,14 +86,14 @@ function ago(h){return h<1?"just now":h<24?h+"h ago":Math.floor(h/24)+"d ago"}
 function A(){return S.live.length?S.live:L}
 function F(i){return L.concat(S.live).filter(function(l){return l.id==i})[0]}
 function ST(l){return l.s||M[l.m]}
-function isB(l){return l.b!==undefined?l.b:BO.indexOf(l.c)>-1}
+function isB(l){return locName(l)=="Bohol"||(l.b===true)}
 function sc(l){var a=ST(l)[1],pc=(a-l.p)/a*100;return Math.max(0,Math.min(100,Math.round(50+pc*1.75)))}
 function lb(s){return s>=80?["Great Deal","g"]:s>=65?["Good Deal","l"]:s>=50?["Fair Deal","o"]:["Pricey","x"]}
 function card(l){var s=sc(l),b=lb(s);return '<div class="c row" data-a="open" data-i="'+l.id+'"><div class="th">'+IC[l.g]+im(l)+'</div><div class="f1"><b>'+l.t+'</b><div class="mu">'+l.c+' · '+ago(l.h)+'</div></div><div class="rt"><b>'+P(l.p)+'</b><br><span class="bd '+b[1]+'">'+b[0]+'</span></div></div>'}
 function hd(){return '<h1>Flip<i>Radar</i></h1><div class="mu">Find deals. Flip smarter.</div><div class="note">'+(S.live.length?'Showing live listings from Apify. Refresh them in the Watchlist tab.':'Showing sample listings. Open the Watchlist tab and tap Refresh live listings to load real ones.')+'</div>'}
 function vHome(){var top=A().filter(isB).sort(function(a,b){return sc(b)-sc(a)}).slice(0,5);
 return hd()+'<div class="chips">'+CATS.map(function(c){return '<button class="chip" data-a="cat" data-c="'+c+'">'+IC[c]+' '+c+'</button>'}).join("")+'</div><button class="btn s" data-a="tab" data-t="search">🔍 Search for a device</button><h2>Best deals in Bohol</h2>'+top.map(card).join("")}
-function vSearch(){return '<h1>Search</h1><label>What are you looking for?</label><input id="q" value="'+S.q+'" placeholder="e.g. iphone 13" autocomplete="off"><div class="g3"><div><label>Max price (₱)</label><input id="mx" type="number" inputmode="numeric" value="'+S.max+'" placeholder="20000"></div><div><label>Sort by</label><select id="so"><option value="d">Best deal</option><option value="p">Lowest price</option><option value="n">Newest</option></select></div></div><div class="chips"><button class="chip'+(S.cat?'':' on')+'" data-a="cat" data-c="">All</button>'+CATS.map(function(c){return '<button class="chip'+(S.cat==c?' on':'')+'" data-a="cat" data-c="'+c+'">'+c+'</button>'}).join("")+'</div><div class="row"><div class="f1">Bohol only</div><button class="sw'+(S.bo?' on':'')+'" data-a="bo" aria-label="Bohol only"></button></div><button class="btn" data-a="scan">Scan live listings in this budget</button><div class="note" id="msg">'+(S.msg||"Enter a max price, then scan. All categories searches multiple keywords and may use more Apify credits.")+'</div><div class="scan-status'+(S.busy?' active':'')+'" id="scan-status" role="status" aria-live="polite"><span class="scan-spin" aria-hidden="true"></span><div class="f1"><b>Scanning Marketplace…</b><div class="mu" id="scan-label">Waiting for results</div><div class="scan-track"><div class="scan-fill" id="scan-fill" style="width:'+(S.scanTotal?Math.round(S.scanDone/S.scanTotal*100):0)+'%"></div></div></div></div><div class="mu" id="cnt" style="margin-top:10px"></div><div class="note" id="breakdown" style="margin-top:8px"></div><div class="note" id="scan-diagnostics" style="margin-top:8px">'+scanDiagnostics()+'</div><div id="res"></div>'}
+function vSearch(){return '<h1>Search</h1><label>What are you looking for?</label><input id="q" value="'+S.q+'" placeholder="e.g. iphone 13" autocomplete="off"><div class="g3"><div><label>Max price (₱)</label><input id="mx" type="number" inputmode="numeric" value="'+S.max+'" placeholder="20000"></div><div><label>Sort by</label><select id="so"><option value="d">Best deal</option><option value="p">Lowest price</option><option value="n">Newest</option></select></div></div><div class="chips"><button class="chip'+(S.cat?'':' on')+'" data-a="cat" data-c="">All</button>'+CATS.map(function(c){return '<button class="chip'+(S.cat==c?' on':'')+'" data-a="cat" data-c="'+c+'">'+c+'</button>'}).join("")+'</div><div class="g3"><div><label>Province</label><select id="province">'+locOptions()+'</select></div><div><label>Search radius</label><select id="radius">'+[20,40,60,80,100,150].map(function(k){return '<option value="'+k+'"'+(S.radius==k?' selected':'')+'>'+k+' km</option>'}).join("")+'</select></div></div><div class="mu" style="margin:8px 0 12px">Province filters saved results. Radius and province center apply to new Apify scans. Apify may not honor the requested location.</div><button class="btn" data-a="scan">Scan live listings in this budget</button><div class="note" id="msg">'+(S.msg||"Enter a max price, then scan. All categories searches multiple keywords and may use more Apify credits.")+'</div><div class="scan-status'+(S.busy?' active':'')+'" id="scan-status" role="status" aria-live="polite"><span class="scan-spin" aria-hidden="true"></span><div class="f1"><b>Scanning Marketplace…</b><div class="mu" id="scan-label">Waiting for results</div><div class="scan-track"><div class="scan-fill" id="scan-fill" style="width:'+(S.scanTotal?Math.round(S.scanDone/S.scanTotal*100):0)+'%"></div></div></div></div><div class="mu" id="cnt" style="margin-top:10px"></div><div class="note" id="breakdown" style="margin-top:8px"></div><div class="note" id="scan-diagnostics" style="margin-top:8px">'+scanDiagnostics()+'</div><div id="res"></div>'}
 S.scanStats=ld("fr_scan_stats",[]);
 function scanDiagnostics(){
 var entries=S.scanStats||[];
@@ -103,12 +109,12 @@ var source=A(),steps=[source.length],matches=source.filter(function(l){var t=l.t
 steps.push(matches.length);
 matches=matches.filter(function(l){return l.p<=mx});steps.push(matches.length);
 matches=matches.filter(function(l){return !S.cat||l.g==S.cat});steps.push(matches.length);
-matches=matches.filter(function(l){return !S.bo||isB(l)});steps.push(matches.length);
+matches=matches.filter(locMatches);steps.push(matches.length);
 matches.sort(function(a,b){return S.so=="p"?a.p-b.p:S.so=="n"?a.h-b.h:sc(b)-sc(a)});
 $("cnt").textContent=matches.length+" result"+(matches.length==1?"":"s");
 var detail=$("breakdown");
-if(detail)detail.textContent="Loaded "+steps[0]+" → keyword "+steps[1]+" → budget "+steps[2]+" → category "+steps[3]+" → location "+steps[4]+(S.live.length?" (saved live listings)":" (sample data)");
-$("res").innerHTML=matches.length?matches.map(card).join(""):'<div class="c mu">'+(S.busy?"Scan in progress. New matching listings will appear as searches finish.":!steps[0]?"No saved listings yet. Try a single-keyword scan.":!steps[1]?"No saved listings match the keyword. Try another model or refresh.":!steps[2]?"No listings are under this price. Increase the budget.":!steps[3]?"No listings match the selected category. Try All.":!steps[4]?"No listings pass the Bohol-only filter. Try switching it off to inspect saved results; raising the budget will not change location matches.":"No matching listings.")+'</div>'
+if(detail)detail.textContent="Loaded "+steps[0]+" → keyword "+steps[1]+" → budget "+steps[2]+" → category "+steps[3]+" → province "+steps[4]+(S.live.length?" (saved live listings)":" (sample data)");
+$("res").innerHTML=matches.length?matches.map(card).join(""):'<div class="c mu">'+(S.busy?"Scan in progress. New matching listings will appear as searches finish.":!steps[0]?"No saved listings yet. Try a single-keyword scan.":!steps[1]?"No saved listings match the keyword. Try another model or refresh.":!steps[2]?"No listings are under this price. Increase the budget.":!steps[3]?"No listings match the selected category. Try All.":!steps[4]?"No listings match the selected province. Choose All to inspect saved results; changing the radius requires a new scan.":"No matching listings.")+'</div>'
 }
 function phoneSpecsQuery(title){
 var t=String(title||"").replace(/\([^)]*\)/g," ").replace(/[|•_,]/g," ").replace(/\b(?:for sale|forsale|selling|rush sale|negotiable|nego|swap|trade|good condition|like new|brand new|brandnew|complete set|unit only|openline|open line|no issue|no issues|freebies|original|authentic|slightly used|with box|with charger|sealed|price|firm|fixed|php|pesos)\b/gi," ").replace(/(?:₱|\bPHP\s*)[\d,.]+/gi," ").replace(/\b\d{1,3}\s*(?:gb|tb)\s*(?:\/|\+|\s)\s*\d{1,4}\s*(?:gb|tb)\b/gi," ").replace(/\b\d{1,4}\s*(?:gb|tb|mah|hz)\b/gi," ").replace(/\s+/g," ").trim();
@@ -168,13 +174,16 @@ if(!r.length)return [];
 var med=pq(r.map(pr),.5);r=r.filter(function(x){return pr(x)>=med*.3});
 var s=q3(r.map(pr)),gs={};r.forEach(function(x){var g=gk(x.marketplace_listing_title);(gs[g]=gs[g]||[]).push(pr(x))});
 if(bm)r=r.filter(function(x){return pr(x)<=bm});
-return r.map(function(x){var g=gs[gk(x.marketplace_listing_title)],c=gv(x,"location.reverse_geocode.city")||"",st=gv(x,"location.reverse_geocode.state")||"";return{id:"f"+x.id,t:x.marketplace_listing_title,k:k,p:pr(x),c:c,h:Math.max(0,Math.floor((now-x.creation_time)/3600)),g:cg(x.marketplace_listing_title),u:x.listingUrl,i:x.primary_listing_photo_url,s:g.length>=4?q3(g):s,w:g.length<4,b:/bohol/i.test(st)||BO.indexOf(c)>-1}})}
+return r.map(function(x){var g=gs[gk(x.marketplace_listing_title)],c=gv(x,"location.reverse_geocode.city")||"",st=gv(x,"location.reverse_geocode.state")||"";return{id:"f"+x.id,t:x.marketplace_listing_title,k:k,p:pr(x),c:c,h:Math.max(0,Math.floor((now-x.creation_time)/3600)),g:cg(x.marketplace_listing_title),province:st,u:x.listingUrl,i:x.primary_listing_photo_url,s:g.length>=4?q3(g):s,w:g.length<4,b:/bohol/i.test(st)||BO.indexOf(c)>-1}})}
 function em(e){var c=e&&e.code;return c=="bad_token"?"Apify rejected the token. Check it and try again.":c=="no_data"?"The scraper returned no data. Try again.":(e instanceof TypeError)?"Could not reach Apify from this page. Check your connection; the browser may also be blocking the request.":"Refresh failed ("+(c||"unknown")+")"+(e&&e.detail?": "+e.detail:"")+". Your previous listings are still saved."}
 function say(t){S.msg=t;var m=$("msg");if(m)m.textContent=t}
 async function refresh(ws,bm){
 if(S.busy||!ws.length)return;
 if(!S.tok){say("Add your Apify token in the Watchlist tab first.");return}
 var tasks=ws.filter(function(w){return w&&w.k}).map(function(w){return{k:String(w.k),max:w.max}});
+var scanProvince=S.province=="All"?"Bohol":S.province;
+var scanCenter=LOCS[scanProvince]||LOCS.Bohol;
+var scanRadius=S.radius;
 if(!tasks.length)return;
 S.busy=1;S.scanTotal=tasks.length;S.scanDone=0;S.scanStats=[];
 R();
@@ -189,7 +198,7 @@ say("Scan "+done+"/"+tasks.length+" complete · "+active+" running · "+added+" 
 if(S.t=="search"&&!S.d&&$("res")){res();var diagnostic=$("scan-diagnostics");if(diagnostic)diagnostic.textContent=scanDiagnostics()}
 }
 async function runOne(w){
-var r=await fetch("https://api.apify.com/v2/acts/curious_coder~facebook-marketplace/run-sync-get-dataset-items?clean=true&limit=60&token="+encodeURIComponent(S.tok),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({searchKeyword:w.k,latitude:9.6477,longitude:123.8547,radiusKm:40,daysSinceListed:"7",sortBy:"creation_time_descend",maxPagesPerUrl:1,getListingDetails:false,getAllListingPhotos:false,proxy:{useApifyProxy:true,apifyProxyCountry:"PH"}})});
+var r=await fetch("https://api.apify.com/v2/acts/curious_coder~facebook-marketplace/run-sync-get-dataset-items?clean=true&limit=60&token="+encodeURIComponent(S.tok),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({searchKeyword:w.k,latitude:scanCenter.lat,longitude:scanCenter.lon,radiusKm:scanRadius,daysSinceListed:"7",sortBy:"creation_time_descend",maxPagesPerUrl:1,getListingDetails:false,getAllListingPhotos:false,proxy:{useApifyProxy:true,apifyProxyCountry:"PH"}})});
 if(r.status==401||r.status==403)throw{code:"bad_token"};
 if(!r.ok){var detail="";try{var errorBody=await r.text();try{var errorJson=JSON.parse(errorBody);detail=(errorJson.error&&(errorJson.error.message||errorJson.error.type))||errorJson.message||errorJson.detail||""}catch(parseError){detail=errorBody}}catch(readError){}detail=String(detail).replace(/apify_api_[A-Za-z0-9_-]+/g,"[redacted]").slice(0,200);throw{code:"http_"+r.status,detail:detail}}
 var items=await r.json();
