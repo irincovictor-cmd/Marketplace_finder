@@ -87,3 +87,10 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - [ ] Confirm breakdown changes when toggling Bohol only and changing category without triggering Apify.
 - [ ] Confirm search location, radius, listing age, and depth are unchanged.
 - [ ] Check duplicate listings and localStorage size after repeated scans.
+
+## October 23 follow-up: loading and empty search results
+
+- **Observed:** On PC Parts with ₱50,000 budget and Bohol-only enabled, screen showed 0 results while displaying old sequential message `Searching "monitor" (3 of 3)`.
+- **Interpretation:** High budget does not override category and location filters. Root cause of 0 results remains unverified until breakdown counts are inspected. Old message suggests stale GitHub Pages/browser cache or an in-progress scan from a previous deployment.
+- **Implemented:** Animated spinner, progress bar, completed/total counter, and filter-stage-specific empty-state messages. No change to Bohol center, radius, or actor search inputs.
+- **Test:** Refresh page after deployment, confirm spinner and `Scan X/Y` message, compare counts with Bohol-only on/off, and avoid repeated paid scans while diagnosing.
