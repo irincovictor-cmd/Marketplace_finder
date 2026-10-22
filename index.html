@@ -38,7 +38,7 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--cd);bor
 nav button{flex:1;border:0;background:none;color:var(--mu);font-size:11px;padding:4px 0}
 nav button span{display:block;font-size:20px}
 nav button.on{color:var(--ac);font-weight:700}
-</style></head><body>
+.scan-status{display:none;align-items:center;gap:10px;padding:12px;margin:10px 0;background:var(--cd);border:1px solid var(--ln);border-radius:12px}.scan-status.active{display:flex}.scan-spin{width:24px;height:24px;border:3px solid var(--ln);border-top-color:var(--ac);border-radius:50%;animation:scan-spin .8s linear infinite;flex:none}@keyframes scan-spin{to{transform:rotate(360deg)}}.scan-track{height:6px;border-radius:8px;background:var(--ln);overflow:hidden;margin-top:7px}.scan-fill{height:100%;width:0;background:var(--ac);transition:width .25s}@media(prefers-reduced-motion:reduce){.scan-spin{animation:none;border-top-color:var(--gr)}.scan-fill{transition:none}}</style></head><body>
 <div class="w" id="app"></div>
 <nav>
 <button data-a="tab" data-t="home"><span>🏠</span>Home</button>
@@ -87,7 +87,7 @@ function card(l){var s=sc(l),b=lb(s);return '<div class="c row" data-a="open" da
 function hd(){return '<h1>Flip<i>Radar</i></h1><div class="mu">Find deals. Flip smarter.</div><div class="note">'+(S.live.length?'Showing live listings from Apify. Refresh them in the Watchlist tab.':'Showing sample listings. Open the Watchlist tab and tap Refresh live listings to load real ones.')+'</div>'}
 function vHome(){var top=A().filter(isB).sort(function(a,b){return sc(b)-sc(a)}).slice(0,5);
 return hd()+'<div class="chips">'+CATS.map(function(c){return '<button class="chip" data-a="cat" data-c="'+c+'">'+IC[c]+' '+c+'</button>'}).join("")+'</div><button class="btn s" data-a="tab" data-t="search">🔍 Search for a device</button><h2>Best deals in Bohol</h2>'+top.map(card).join("")}
-function vSearch(){return '<h1>Search</h1><label>What are you looking for?</label><input id="q" value="'+S.q+'" placeholder="e.g. iphone 13" autocomplete="off"><div class="g3"><div><label>Max price (₱)</label><input id="mx" type="number" inputmode="numeric" value="'+S.max+'" placeholder="20000"></div><div><label>Sort by</label><select id="so"><option value="d">Best deal</option><option value="p">Lowest price</option><option value="n">Newest</option></select></div></div><div class="chips"><button class="chip'+(S.cat?'':' on')+'" data-a="cat" data-c="">All</button>'+CATS.map(function(c){return '<button class="chip'+(S.cat==c?' on':'')+'" data-a="cat" data-c="'+c+'">'+c+'</button>'}).join("")+'</div><div class="row"><div class="f1">Bohol only</div><button class="sw'+(S.bo?' on':'')+'" data-a="bo" aria-label="Bohol only"></button></div><button class="btn" data-a="scan">Scan live listings in this budget</button><div class="note" id="msg">'+(S.msg||"Enter a max price, then scan. All categories searches multiple keywords and may use more Apify credits.")+'</div><div class="mu" id="cnt" style="margin-top:10px"></div><div class="note" id="breakdown" style="margin-top:8px"></div><div id="res"></div>'}
+function vSearch(){return '<h1>Search</h1><label>What are you looking for?</label><input id="q" value="'+S.q+'" placeholder="e.g. iphone 13" autocomplete="off"><div class="g3"><div><label>Max price (₱)</label><input id="mx" type="number" inputmode="numeric" value="'+S.max+'" placeholder="20000"></div><div><label>Sort by</label><select id="so"><option value="d">Best deal</option><option value="p">Lowest price</option><option value="n">Newest</option></select></div></div><div class="chips"><button class="chip'+(S.cat?'':' on')+'" data-a="cat" data-c="">All</button>'+CATS.map(function(c){return '<button class="chip'+(S.cat==c?' on':'')+'" data-a="cat" data-c="'+c+'">'+c+'</button>'}).join("")+'</div><div class="row"><div class="f1">Bohol only</div><button class="sw'+(S.bo?' on':'')+'" data-a="bo" aria-label="Bohol only"></button></div><button class="btn" data-a="scan">Scan live listings in this budget</button><div class="note" id="msg">'+(S.msg||"Enter a max price, then scan. All categories searches multiple keywords and may use more Apify credits.")+'</div><div class="scan-status'+(S.busy?' active':'')+'" id="scan-status" role="status" aria-live="polite"><span class="scan-spin" aria-hidden="true"></span><div class="f1"><b>Scanning Marketplace…</b><div class="mu" id="scan-label">Waiting for results</div><div class="scan-track"><div class="scan-fill" id="scan-fill" style="width:'+(S.scanTotal?Math.round(S.scanDone/S.scanTotal*100):0)+'%"></div></div></div></div><div class="mu" id="cnt" style="margin-top:10px"></div><div class="note" id="breakdown" style="margin-top:8px"></div><div id="res"></div>'}
 function res(){
 var q=S.q.toLowerCase().split(/\s+/).filter(Boolean),mx=parseFloat(S.max);
 if(!Number.isFinite(mx)||mx<=0)mx=1e12;
@@ -100,7 +100,7 @@ matches.sort(function(a,b){return S.so=="p"?a.p-b.p:S.so=="n"?a.h-b.h:sc(b)-sc(a
 $("cnt").textContent=matches.length+" result"+(matches.length==1?"":"s");
 var detail=$("breakdown");
 if(detail)detail.textContent="Loaded "+steps[0]+" → keyword "+steps[1]+" → budget "+steps[2]+" → category "+steps[3]+" → location "+steps[4]+(S.live.length?" (saved live listings)":" (sample data)");
-$("res").innerHTML=matches.length?matches.map(card).join(""):'<div class="c mu">No matches. Check the breakdown above or turn off Bohol only.</div>'
+$("res").innerHTML=matches.length?matches.map(card).join(""):'<div class="c mu">'+(S.busy?"Scan in progress. New matching listings will appear as searches finish.":!steps[0]?"No saved listings yet. Try a single-keyword scan.":!steps[1]?"No saved listings match the keyword. Try another model or refresh.":!steps[2]?"No listings are under this price. Increase the budget.":!steps[3]?"No listings match the selected category. Try All.":!steps[4]?"No listings pass the Bohol-only filter. Try switching it off to inspect saved results; raising the budget will not change location matches.":"No matching listings.")+'</div>'
 }
 function phoneSpecsQuery(title){
 var t=String(title||"").replace(/\([^)]*\)/g," ").replace(/[|•_,]/g," ").replace(/\b(?:for sale|forsale|selling|rush sale|negotiable|nego|swap|trade|good condition|like new|brand new|brandnew|complete set|unit only|openline|open line|no issue|no issues|freebies|original|authentic|slightly used|with box|with charger|sealed|price|firm|fixed|php|pesos)\b/gi," ").replace(/(?:₱|\bPHP\s*)[\d,.]+/gi," ").replace(/\b\d{1,3}\s*(?:gb|tb)\s*(?:\/|\+|\s)\s*\d{1,4}\s*(?:gb|tb)\b/gi," ").replace(/\b\d{1,4}\s*(?:gb|tb|mah|hz)\b/gi," ").replace(/\s+/g," ").trim();
@@ -168,10 +168,15 @@ if(S.busy||!ws.length)return;
 if(!S.tok){say("Add your Apify token in the Watchlist tab first.");return}
 var tasks=ws.filter(function(w){return w&&w.k}).map(function(w){return{k:String(w.k),max:w.max}});
 if(!tasks.length)return;
-S.busy=1;
+S.busy=1;S.scanTotal=tasks.length;S.scanDone=0;
+R();
 var started=Date.now(),next=0,done=0,success=0,failed=[],added=0,active=0;
 function progress(){
 var elapsed=Math.floor((Date.now()-started)/1000);
+S.scanDone=done;
+var spin=$("scan-status");if(spin)spin.classList.toggle("active",!!S.busy);
+var bar=$("scan-fill");if(bar)bar.style.width=Math.round(done/tasks.length*100)+"%";
+var label=$("scan-label");if(label)label.textContent=done+" of "+tasks.length+" searches complete · "+active+" running · "+elapsed+"s";
 say("Scan "+done+"/"+tasks.length+" complete · "+active+" running · "+added+" cleaned · "+failed.length+" failed · "+elapsed+"s elapsed"+(failed.length?" | Last error: "+failed[failed.length-1]:""));
 if(S.t=="search"&&!S.d&&$("res"))res();
 }
@@ -197,7 +202,7 @@ active--;done++;progress();
 }
 try{await Promise.all([worker(),worker()].slice(0,Math.min(2,tasks.length)))}
 finally{
-S.busy=0;
+S.busy=0;S.scanDone=done;
 var elapsed=Math.floor((Date.now()-started)/1000);
 say("Finished "+success+"/"+tasks.length+" searches in "+elapsed+"s. "+added+" clean listings loaded."+(failed.length?" "+failed.length+" failed; successful results were saved. "+failed.join(" | ").slice(0,450):""));
 R();
