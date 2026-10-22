@@ -109,3 +109,10 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - **Filtering:** Province filtering of existing saved listings is immediate and free. New Apify records store reverse-geocoded state; older saved records with missing state may be unknown or only matched through a limited city fallback.
 - **Unverified:** The actor previously logged NYC despite Bohol coordinates. Radius/location controls are requested inputs, **not confirmed geographic enforcement**. Validate real run logs before claiming coverage.
 - **Regression checks:** Confirm changing province does not launch a paid scan; radius changes affect next scan; changing tabs preserves selections; scan diagnostics and saved listings remain usable.
+
+## October 23: nearest-first sorting
+
+- Added **Nearest (approx.)** sort and a user-selectable reference town (default Tagbilaran), with approximate straight-line distances using a small town-center lookup. Unknown town names sort last; no precise device GPS is accessed.
+- Sorting works on already saved listings, does not spend Apify credits, and does not change scan radius or center. Reference town persists locally.
+- **Known limitation:** Only a limited list of towns is recognized; coordinates are approximate town centers, not seller addresses, and distances are not driving distances. Future enhancement: user-selected barangay/location or consent-based GPS, plus broader geocoding coverage.
+- **Testing:** Select Nearest and change reference town, confirm ordering and unknown-town behavior, and verify other sort options remain functional.
