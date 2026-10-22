@@ -156,9 +156,10 @@ else if(a=="wref"){refresh([S.w[i]]);return}
 else if(a=="wall"){refresh(S.w.filter(function(w){return w.on}));return}
 else if(a=="wgo"){S.q=S.w[i].k;S.max=S.w[i].max;S.bo=true;S.cat="";S.t="search";S.d=0}
 R()});
+document.addEventListener("change",function(e){var id=e.target.id,v=e.target.value;if(id=="province"){S.province=v;sv("fr_province",v);res()}else if(id=="radius"){S.radius=Number(v);sv("fr_radius",S.radius);res()}});
 document.addEventListener("input",function(e){var id=e.target.id,v=e.target.value;
 if(id=="q"){S.q=v;res()}else if(id=="mx"){S.max=v;res()}else if(id=="so"){S.so=v;res()}
-else if(id=="tok"){S.tok=v.trim();sv("fr_tok",S.tok)}else if(id=="cb"||id=="cs"||id=="cc"){S[id]=v;co()}});
+else if(id=="province"){S.province=v;sv("fr_province",v);res()}else if(id=="radius"){S.radius=Number(v);sv("fr_radius",S.radius);res()}else if(id=="tok"){S.tok=v.trim();sv("fr_tok",S.tok)}else if(id=="cb"||id=="cs"||id=="cc"){S[id]=v;co()}});
 var AP="Apify";
 function cg(t){t=t.toLowerCase();return /iphone|samsung|galaxy|redmi|xiaomi|oppo|vivo|realme|phone|infinix|tecno/.test(t)?"Phones":/laptop|macbook|nitro|legion|thinkpad|vivobook|ideapad/.test(t)?"Laptops":/ps5|ps4|xbox|switch|nintendo|playstation/.test(t)?"Consoles":/rtx|gtx|ryzen|radeon|ssd|gpu|motherboard|monitor/.test(t)?"PC Parts":"Electronics"}
 function pq(a,q){a=a.slice().sort(function(x,y){return x-y});return a[Math.min(a.length-1,Math.floor(q*(a.length-1)+.5))]}
