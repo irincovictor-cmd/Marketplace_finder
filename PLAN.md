@@ -117,3 +117,14 @@ See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and t
 4. Test Tagbilaran / 40 km / Bohol / Nearest, then compare All province. Confirm every displayed result passes location/radius and is sorted by approximate distance.
 5. Check per-keyword raw, cleaned, category, province, and radius counts; verify actual listing titles, prices, categories, and URLs.
 6. Avoid repeated paid scans until saved data is diagnosed; use one narrow test keyword when necessary.
+
+
+## October 23, 2026 — Unified profit-evidence sprint
+
+- Replaced conflicting valuation paths: Home, Search, and Listing Details now use the same `resaleEvidence()` and `profitPreview()` functions. The manual calculator receives a prefilled illustrative resale value and ₱500 expenses only when qualifying evidence exists.
+- Phone comparables require detected model, storage capacity and matching network label (5G/4G/unspecified). At least **three other saved listings** must match; otherwise the UI shows insufficient evidence, with **no automatic resale price or profit score**.
+- With enough comparables, use median *asking* price × 0.85 as illustrative resale, then subtract asking price and ₱500 assumed expenses. These are NOT sold-price observations or guaranteed profits. Confidence labels are **Limited** for 3–7 and **Moderate** for 8+ matching asking listings; neither verifies listing quality.
+- Removed legacy detail-panel `ST(l)` ranges and `evidence(l)` counts from the visible listing detail screen. The older cleaner still stores broad price statistics for backwards compatibility, but they are not used for new visible profit estimates.
+- Home only promotes listings with a computable estimate. Search retains all matching listings and explicitly labels missing estimates.
+- **Validation:** JavaScript parses successfully. Live GitHub Pages and saved-data regression tests remain pending; no Apify scan was run.
+- **Limitations:** Condition, battery health, storage parsing errors, duplicate listings, regional variants, network omissions, seller reliability and actual completed-sale values remain unresolved. Broader marketplace discovery and richer confidence scoring are future work.
