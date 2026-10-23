@@ -173,3 +173,10 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - **Method:** illustrative resale = median matching *asking* price × 0.85; illustrative net = resale − purchase price − ₱500 assumed costs. These assumptions do not imply a verified resale market.
 - **Status:** Committed; JavaScript syntax validated; Android/GitHub Pages functional verification pending. No paid scan.
 - **Follow-ups:** inspect model parser on real titles (including Pro/Pro+, 4G/5G and storage); deduplicate comparables, normalize source categories, account for condition/battery, validate actual resale prices, and calibrate confidence.
+
+
+### FR-DISCOVERY-01 — One-click category discovery experiment (October 23, 2026)
+- Added **Test category discovery (1 paid actor run)** on Search. Actor `curious_coder/facebook-marketplace`, URL `https://www.facebook.com/marketplace/tagbilaran/electronics/`, `maxPagesPerUrl=1`, API dataset response `limit=24`, no detail/media fetching, PH proxy, strict filtering.
+- Test runs only after user confirmation and uses the token stored locally in the browser; no token is committed. It reports returned items, phone-like listings, detected brand labels, Bohol-recognized locations and sample titles; results are logged as `category_test_result` (or `category_test_error`). Existing `fr_live` and keyword scanner remain unchanged.
+- Actor documentation supports category URLs but **the exact Tagbilaran slug and local category results are unverified**. Dataset response `limit=24` caps returned items, not necessarily actor-side billed work. Run can incur charges.
+- **Status:** Code committed and JavaScript syntax checked. User must trigger one test from their browser. Review Logs and Apify actual run charges before choosing a discovery strategy.
