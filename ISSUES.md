@@ -195,3 +195,12 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - **Conclusion:** The experimental `/marketplace/tagbilaran/electronics/` URL with PH proxy and one page did **not** constrain results to Bohol. Do not replace the existing keyword scanner or treat the PH proxy as location enforcement.
 - **Next investigation:** Verify actor's supported URL and location input schema and whether it accepts geographic search URLs, authenticated marketplace context, or latitude/longitude together with category browsing. Do not spend further credits without validating inputs; keep the test isolated from saved listings.
 - **Status:** Test completed; geographic relevance failed. Source: user's screenshot of category test report.
+
+
+### FR-DISCOVERY-02 — Claude location probe integrated (October 23, 2026)
+- Applied Claude's proposal to replace the California-returning category URL with latitude/longitude/radius inputs and optional phone discovery terms. Added experimental strict filtering and phone-discovery toggles, both off by default.
+- The probe can run `phone`, `android`, `256gb` or no keyword, with one page and a 24-item response cap. Its output logs locations, countries, brands, and Bohol recognition. It does not overwrite saved listings.
+- Claude's reported actor-schema finding: latitude/longitude are ignored when `urls` is supplied. This finding still requires independent actor-schema verification before declaring root cause confirmed. The Tagbilaran URL fallback to California remains a hypothesis.
+- A `maxTotalChargeUsd=0.10` request parameter is now sent; **enforcement and actual charges have not been verified**. Do not assume $0.10 is a guaranteed cap, or that output limits constrain billable work.
+- Integration adjusted checkbox HTML and added confirmation before extra discovery searches. JavaScript syntax check passed. No paid test performed.
+- **Next:** Verify actor input schema and billing semantics; run a single approved location probe, inspect raw country and city metadata, and check actual Apify charges before enabling broader discovery.
