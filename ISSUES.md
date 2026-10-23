@@ -78,6 +78,16 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - Record: category, keyword, budget, Bohol toggle, number fetched/cleaned/shown, elapsed time, Apify runs/credits, and any error text.
 - Avoid running a 13-keyword scan solely for debugging if a single-keyword reproduction will suffice.
 
+## October 23 — location filtering and deal-estimate follow-up
+
+- **Root cause (code):** Radius previously went only to the Apify actor; the displayed results filtered by province but **not radius**. Nearest-first sorting was optional and used a small town lookup; unrecognized towns had unknown distances. Selected town and actor scan center could differ.
+- **Implemented:** Enforce approximate town-center distance <= selected radius for displayed search results, use selected town for future Apify scan center, and include the radius stage in the filter breakdown. Unknown towns are excluded rather than presented as nearby.
+- **Caveats:** Straight-line town-center distances are approximations; unknown/ambiguous geocoding may exclude genuine nearby results. Province All means all provinces within radius, not all of the Philippines. Apify may still ignore coordinates.
+- **Pricing root cause:** `sc()` compared listing price with median *asking prices*, using coarse first-two-word grouping; a cheap listing could be scored highly despite model, condition, or authenticity differences.
+- **Implemented interim safeguard:** A listing needs at least five similar-title comparables to receive a positive deal label; otherwise **Unverified**. Detail screen says asking-price spread, not guaranteed profit. The existing manual profit calculator remains available.
+- **Open:** Verify exact device variants and conditions, actual sold prices, full Bohol municipality geocoding, mobile runtime, and external API options. **No AI API was added** because pricing data and secure backend infrastructure are not yet available.
+- **Regression test:** Tagbilaran / 40 km / All province / Nearest; confirm no displayed listing exceeds 40 km, unknown towns are excluded, and order increases by distance. Change province and reference town without paying for a new scan. Check saved and detail links and sample/live labels.
+
 ## Sprint 1 verification checklist (pending)
 
 - [ ] Single-category scan succeeds and preserves Facebook and GSMArena links.
