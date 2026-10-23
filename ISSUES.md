@@ -146,3 +146,11 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - Test strict radius and nearest ordering with known towns. Expand Bohol town lookup only after collecting examples.
 - Inspector currently covers saved cleaned listings, not items discarded by initial cleaning; consider bounded diagnostic capture later.
 - Avoid new broad scans until existing data is inspected.
+
+## Local diagnostic logging (October 23, 2026)
+
+- Added **Logs · scan history & errors** expandable panel to Search. Persists at most 100 events in browser localStorage key `fr_diagnostic_log_v1`.
+- Events: scan start with keywords and location settings, per-keyword raw/cleaned/Bohol counts and up to 12 cleaned location samples, keyword errors, completed scan with a bounded filter audit. **Record current filters** captures counts and up to 40 excluded cleaned listings, with title, price, raw city/state, interpreted province, approximate distance, and exclusion reasons.
+- **Export JSON**, **Copy logs**, and **Clear logs** controls. No additional Apify scan required for filter audits.
+- Token redaction attempts to remove Apify token strings; nevertheless, exported logs can contain listing titles, city/state, prices, and URLs if future events add them. Review before sharing. Stored locally, not automatically sent to GitHub or ChatGPT.
+- Limitations: logging begins only after this version is loaded, existing prior searches are not retrospectively recorded; initial raw records rejected by `clean()` are not stored; localStorage can be erased by browser cleanup. Browser runtime and export behavior need phone testing.
