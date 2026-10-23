@@ -59,7 +59,7 @@ function knownBohol(c,p){var n=normTown(c);if(!n)return false;var matches=BOHOL_
 // Shared town names must have independent province evidence; PH-07 is only a region code.
 if(["valencia","carmen","danao","alicia","anda","buenavista","pilar","san isidro","san miguel"].indexOf(n)>-1)return /bohol/i.test(p||"");
 return true}
-function townPoint(l){var c=normTown(l.c),k=Object.keys(TOWNS).find(function(k){return c===normTown(k)});return k?TOWNS[k]:null}
+function townPoint(l){var c=normTown(l.c),k=Object.keys(TOWNS).find(function(k){return c===normTown(k)});if(!k)return null;if(TOWN_PROVINCE[k]==="Bohol"&&!knownBohol(l.c,l.province||"Bohol"))return null;return TOWNS[k]}
 function distanceFromRef(l){var a=TOWNS[S.nearTown],b=townPoint(l);if(!a||!b)return Infinity;var r=Math.PI/180,x=Math.sin((b[0]-a[0])*r/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;return 12742*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
 function nearbyText(l){var d=distanceFromRef(l);return Number.isFinite(d)?" · ~"+Math.round(d)+" km from "+S.nearTown:" · distance unknown"}
 
@@ -282,5 +282,7 @@ R();
 }
 }
 
+// Load all 48 Bohol municipality representative coordinates from the checked-in dataset.
+fetch("./bohol-geography.json").then(function(r){if(!r.ok)throw Error("Geography HTTP "+r.status);return r.json()}).then(function(data){if(!data||!Array.isArray(data.municipalities)||data.municipalities.length!==48)throw Error("Expected 48 Bohol locations");data.municipalities.forEach(function(m){if(!m.name||!Number.isFinite(m.lat)||!Number.isFinite(m.lon))return;var name=normTown(m.name)==="tagbilaran"?"Tagbilaran":m.name;TOWNS[name]=[m.lat,m.lon];TOWN_PROVINCE[name]="Bohol"});logEvent("geography_loaded",{municipalities:data.municipalities.length});R()}).catch(function(e){logEvent("geography_error",{message:String(e.message||e)});});
 R();
 </script></body></html>
