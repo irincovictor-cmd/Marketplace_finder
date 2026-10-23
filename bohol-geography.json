@@ -1,0 +1,294 @@
+{
+  "source": "ArcGIS City_Municipal_Boundaries FeatureServer, Bohol; representative points from municipality polygons",
+  "coordinateSystem": "EPSG:4326",
+  "municipalities": [
+    {
+      "name": "Alburquerque",
+      "psgc": "071201000",
+      "lat": 9.633986,
+      "lon": 123.979868
+    },
+    {
+      "name": "Alicia",
+      "psgc": "071202000",
+      "lat": 9.888585,
+      "lon": 124.430066
+    },
+    {
+      "name": "Anda",
+      "psgc": "071203000",
+      "lat": 9.761583,
+      "lon": 124.563153
+    },
+    {
+      "name": "Antequera",
+      "psgc": "071204000",
+      "lat": 9.792314,
+      "lon": 123.911459
+    },
+    {
+      "name": "Baclayon",
+      "psgc": "071205000",
+      "lat": 9.645179,
+      "lon": 123.924602
+    },
+    {
+      "name": "Balilihan",
+      "psgc": "071206000",
+      "lat": 9.760028,
+      "lon": 123.9839
+    },
+    {
+      "name": "Batuan",
+      "psgc": "071207000",
+      "lat": 9.790565,
+      "lon": 124.132444
+    },
+    {
+      "name": "Bien Unido",
+      "psgc": "071248000",
+      "lat": 10.129157,
+      "lon": 124.3738
+    },
+    {
+      "name": "Bilar",
+      "psgc": "071208000",
+      "lat": 9.727918,
+      "lon": 124.126324
+    },
+    {
+      "name": "Buenavista",
+      "psgc": "071209000",
+      "lat": 10.051723,
+      "lon": 124.161571
+    },
+    {
+      "name": "Calape",
+      "psgc": "071210000",
+      "lat": 9.881574,
+      "lon": 123.884204
+    },
+    {
+      "name": "Candijay",
+      "psgc": "071211000",
+      "lat": 9.838079,
+      "lon": 124.46163
+    },
+    {
+      "name": "Carmen",
+      "psgc": "071212000",
+      "lat": 9.85091,
+      "lon": 124.189949
+    },
+    {
+      "name": "Catigbian",
+      "psgc": "071213000",
+      "lat": 9.847032,
+      "lon": 124.038401
+    },
+    {
+      "name": "Clarin",
+      "psgc": "071214000",
+      "lat": 9.923315,
+      "lon": 124.044539
+    },
+    {
+      "name": "Corella",
+      "psgc": "071215000",
+      "lat": 9.694349,
+      "lon": 123.925482
+    },
+    {
+      "name": "Cortez",
+      "psgc": "071216000",
+      "lat": 9.721628,
+      "lon": 123.898524
+    },
+    {
+      "name": "Dagohoy",
+      "psgc": "071217000",
+      "lat": 9.91469,
+      "lon": 124.288554
+    },
+    {
+      "name": "Danao",
+      "psgc": "071218000",
+      "lat": 10.009247,
+      "lon": 124.221565
+    },
+    {
+      "name": "Dauis",
+      "psgc": "071219000",
+      "lat": 9.606474,
+      "lon": 123.830336
+    },
+    {
+      "name": "Dimiao",
+      "psgc": "071220000",
+      "lat": 9.653738,
+      "lon": 124.151105
+    },
+    {
+      "name": "Duero",
+      "psgc": "071221000",
+      "lat": 9.76261,
+      "lon": 124.371786
+    },
+    {
+      "name": "Garcia-Hernandez",
+      "psgc": "071222000",
+      "lat": 9.657009,
+      "lon": 124.281383
+    },
+    {
+      "name": "Guindulman",
+      "psgc": "071223000",
+      "lat": 9.780655,
+      "lon": 124.461451
+    },
+    {
+      "name": "Inabanga",
+      "psgc": "071224000",
+      "lat": 10.016049,
+      "lon": 124.105947
+    },
+    {
+      "name": "Jagna",
+      "psgc": "071225000",
+      "lat": 9.699415,
+      "lon": 124.344434
+    },
+    {
+      "name": "Jetafe",
+      "psgc": "071226000",
+      "lat": 10.121011,
+      "lon": 124.176084
+    },
+    {
+      "name": "Lila",
+      "psgc": "071227000",
+      "lat": 9.61187,
+      "lon": 124.093459
+    },
+    {
+      "name": "Loay",
+      "psgc": "071228000",
+      "lat": 9.624818,
+      "lon": 124.051697
+    },
+    {
+      "name": "Loboc",
+      "psgc": "071229000",
+      "lat": 9.645864,
+      "lon": 124.059237
+    },
+    {
+      "name": "Loon",
+      "psgc": "071230000",
+      "lat": 9.811801,
+      "lon": 123.833626
+    },
+    {
+      "name": "Mabini",
+      "psgc": "071231000",
+      "lat": 9.891116,
+      "lon": 124.522317
+    },
+    {
+      "name": "Maribojoc",
+      "psgc": "071232000",
+      "lat": 9.755194,
+      "lon": 123.859638
+    },
+    {
+      "name": "Panglao",
+      "psgc": "071233000",
+      "lat": 9.582856,
+      "lon": 123.77206
+    },
+    {
+      "name": "Pilar",
+      "psgc": "071234000",
+      "lat": 9.866951,
+      "lon": 124.35501
+    },
+    {
+      "name": "Pres. Cp Garcia (Pitogo)",
+      "psgc": "071235000",
+      "lat": 10.10237,
+      "lon": 124.571786
+    },
+    {
+      "name": "Sagbayan",
+      "psgc": "071236000",
+      "lat": 9.921879,
+      "lon": 124.112219
+    },
+    {
+      "name": "San Isidro",
+      "psgc": "071237000",
+      "lat": 9.844391,
+      "lon": 123.940746
+    },
+    {
+      "name": "San Miguel",
+      "psgc": "071238000",
+      "lat": 10.001936,
+      "lon": 124.315984
+    },
+    {
+      "name": "Sevilla",
+      "psgc": "071239000",
+      "lat": 9.723445,
+      "lon": 124.053567
+    },
+    {
+      "name": "Sierra  Bullones",
+      "psgc": "071240000",
+      "lat": 9.802112,
+      "lon": 124.29535
+    },
+    {
+      "name": "Sikatuna",
+      "psgc": "071241000",
+      "lat": 9.689423,
+      "lon": 123.993208
+    },
+    {
+      "name": "Tagbilaran City",
+      "psgc": "071242000",
+      "lat": 9.662509,
+      "lon": 123.866338
+    },
+    {
+      "name": "Talibon",
+      "psgc": "071243000",
+      "lat": 10.127269,
+      "lon": 124.279417
+    },
+    {
+      "name": "Trinidad",
+      "psgc": "071244000",
+      "lat": 10.072401,
+      "lon": 124.321041
+    },
+    {
+      "name": "Tubigon",
+      "psgc": "071245000",
+      "lat": 9.908445,
+      "lon": 123.96975
+    },
+    {
+      "name": "Ubay",
+      "psgc": "071246000",
+      "lat": 10.000067,
+      "lon": 124.470756
+    },
+    {
+      "name": "Valencia",
+      "psgc": "071247000",
+      "lat": 9.65583,
+      "lon": 124.209515
+    }
+  ]
+}
