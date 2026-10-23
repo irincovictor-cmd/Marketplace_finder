@@ -126,3 +126,9 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - Sorting works on already saved listings, does not spend Apify credits, and does not change scan radius or center. Reference town persists locally.
 - **Known limitation:** Only a limited list of towns is recognized; coordinates are approximate town centers, not seller addresses, and distances are not driving distances. Future enhancement: user-selected barangay/location or consent-based GPS, plus broader geocoding coverage.
 - **Testing:** Select Nearest and change reference town, confirm ordering and unknown-town behavior, and verify other sort options remain functional.
+
+### FR-Location-Inspector — Rejected listings diagnostics (October 23, 2026)
+- Screenshot: 159 saved listings → 149 under budget → 95 category → 1 province → 1 within 40 km. This indicates province interpretation is the largest visible exclusion stage, not necessarily that only one nearby item exists.
+- Added expandable **Rejected listings / filter inspector** on Search. It shows each excluded saved listing, price, raw city/state, interpreted province, approximate distance, all failed filter reasons, and original Marketplace URL when present. Includes rejection-reason selector and limits display to first 80 per selection to avoid overloading mobile browsers.
+- The inspector evaluates **saved cleaned listings only**. Records discarded before storage by `clean()` cannot be reconstructed from localStorage. No additional Apify calls are required to inspect saved listings.
+- Follow-up: Review raw city/state of excluded listings on device; expand recognized municipality lookup and investigate Apify geocoding based on actual examples. Check inspector interactions and persistence in Android browser.
