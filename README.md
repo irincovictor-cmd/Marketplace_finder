@@ -86,3 +86,11 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 - With insufficient comparable evidence, no automatic resale value or profit score is shown; manual profit calculator remains available. Its resale and expense inputs are prefilled only when evidence exists.
 - Old broad price ranges in listing details have been removed. Existing local listings and Apify token remain on the device; this change does not require a new scan.
 - JavaScript syntax checked; actual phone/browser regression testing remains pending. See PLAN.md and ISSUES.md for remaining risks.
+
+
+## October 23, 2026 — Claude discovery patch integration
+
+- Replaced the failed category-URL experiment with a location-anchored probe using selected town latitude, longitude and radius, without a Marketplace URL. Probe terms: phone, android, 256gb or no keyword. The probe requires confirmation and does not modify saved listings.
+- Added optional **Strict local filtering** (off by default) and **Brand-independent phone discovery** (off by default). Discovery adds five terms: phone, cellphone, android, 128gb and 256gb, with extra paid requests only after confirmation.
+- Added a request parameter `maxTotalChargeUsd=0.10` per actor run. Whether Apify enforces it for this endpoint is **not yet verified**; do not treat it as a guaranteed billing ceiling. API output `limit` also does not limit all billed work.
+- The current normal scanner remains available. Syntax checked; no live paid test or Android regression test has been performed for these changes.
