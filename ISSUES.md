@@ -164,3 +164,12 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - Some common Cebu aliases now recognized; full nationwide/province coordinate mapping and ambiguous town resolution remain outstanding.
 - **Important:** PSGC administrative names are not geocoordinates. No invented coordinates added. Radius filtering still excludes municipalities without verified coordinates. Need coordinate source, then test against the user's 167 cached listings and latest rejected-listing logs.
 - Source attribution: Philippine Statistics Authority (PSA), Philippine Standard Geographic Code (PSGC), 3rd Quarter 2026.
+
+
+### FR-PRICING-01 — Conflicting valuation methods (Fixed in code; phone test pending)
+- **Observed:** Redmi Note 15 Pro 512GB details showed 6 broad comparable listings and an estimated ₱4,800–₱11,990 range while its new model-specific label said `Insufficient comps` and score 0/100.
+- **Root cause:** Detail used legacy `ST(l)`/`evidence(l)` based on broad cleaner statistics; Home/Search used a separate `resaleEvidence()` matcher.
+- **Fix:** Detail, Search, Home and calculator prefills now share the model-specific `profitPreview()` evidence path. Require at least 3 other matching phone model/storage/network-label asking prices. Insufficient evidence yields no valuation or automatic score, not a misleading 0/100.
+- **Method:** illustrative resale = median matching *asking* price × 0.85; illustrative net = resale − purchase price − ₱500 assumed costs. These assumptions do not imply a verified resale market.
+- **Status:** Committed; JavaScript syntax validated; Android/GitHub Pages functional verification pending. No paid scan.
+- **Follow-ups:** inspect model parser on real titles (including Pro/Pro+, 4G/5G and storage); deduplicate comparables, normalize source categories, account for condition/battery, validate actual resale prices, and calibrate confidence.
