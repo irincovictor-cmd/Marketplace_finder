@@ -30,6 +30,13 @@ FlipRadar tackles problem 1 first. Problem 2 is in the backlog.
 | 3. Alerts | Notify about new matches and price drops while the app is closed | Not started |
 | 4. AI deal analysis | Deal analysis screen with checklist and risk warnings | Not started |
 
+## October 23 implementation status
+
+- Parallel keyword scans, progress indicators, incremental saves, and filtering diagnostics are implemented, pending phone regression tests.
+- Province selection, selected-town search center, strict client-side radius filtering, and approximate nearest-first sorting are implemented; coverage remains limited by known town coordinates and source metadata.
+- Deal labels now require at least five similar-title comparisons before claiming a potential deal. Estimates are still derived from asking prices, not verified sales; model matching and true resale validation remain open.
+- **AI API decision deferred:** A language model alone cannot verify current resale value. First improve exact model matching and comparable sale data; then assess API pricing, reliability, and key protection on GitHub Pages.
+
 ## Current issue tracking
 
 See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and testing notes. Highest priority is the slow sequential 13-keyword All-category scan; next is explaining why loaded listings are filtered out.
