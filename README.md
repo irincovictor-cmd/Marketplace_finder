@@ -78,3 +78,11 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 ## Data stored on the phone (local storage keys)
 
 `fr_saved` (saved listings), `fr_watch` (watchlist), `fr_live` (last live listings), `fr_up` (last refresh times), `fr_tok` (Apify token).
+
+## October 23 — Pricing consistency update
+
+- Home, Search, and Listing Details now share a single phone model-specific asking-price comparison engine. Requires at least 3 other listings matching detected model, storage and 4G/5G/unspecified label.
+- With enough comparables, an **illustrative** resale price is median asking price discounted 15%, and illustrative net profit deducts the listing price and ₱500 assumed expenses. These are assumptions, **not completed-sale prices or guaranteed profits**.
+- With insufficient comparable evidence, no automatic resale value or profit score is shown; manual profit calculator remains available. Its resale and expense inputs are prefilled only when evidence exists.
+- Old broad price ranges in listing details have been removed. Existing local listings and Apify token remain on the device; this change does not require a new scan.
+- JavaScript syntax checked; actual phone/browser regression testing remains pending. See PLAN.md and ISSUES.md for remaining risks.
