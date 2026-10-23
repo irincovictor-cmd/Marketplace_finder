@@ -204,3 +204,11 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - A `maxTotalChargeUsd=0.10` request parameter is now sent; **enforcement and actual charges have not been verified**. Do not assume $0.10 is a guaranteed cap, or that output limits constrain billable work.
 - Integration adjusted checkbox HTML and added confirmation before extra discovery searches. JavaScript syntax check passed. No paid test performed.
 - **Next:** Verify actor input schema and billing semantics; run a single approved location probe, inspect raw country and city metadata, and check actual Apify charges before enabling broader discovery.
+
+
+### FR-DISCOVERY-02 — First location-anchored Android probe result (October 23, 2026)
+- User screenshot: 24 returned, 22 classified phone-like, **0 Bohol-recognized**, country labels `{"?":24}`.
+- Samples: Cebu City (PH-07), Mandaue City (PH-07), Lapu-Lapu City (PH-07), Dumaguete City (NIR), and ambiguous Talisay (PH-07). No Bohol examples among the displayed samples.
+- The coordinate-based probe is a geographic improvement over the earlier California category-URL result, but it does **not yet establish that the requested Bohol center/radius is honored**. Country field extraction is missing or mapped incorrectly.
+- Phone-like heuristic incorrectly includes repair centers, chargers, and motorcycle phone holders; filter needs accessory/service exclusions and better classification.
+- Next: review exported raw probe logs and actor schema, verify submitted center/radius and response geo fields, inspect all 24 locations, and compare against the chosen town and radius. Do not expand paid scans until geotargeting is validated.
