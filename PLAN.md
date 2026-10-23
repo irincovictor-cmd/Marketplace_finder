@@ -128,3 +128,11 @@ See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and t
 - Home only promotes listings with a computable estimate. Search retains all matching listings and explicitly labels missing estimates.
 - **Validation:** JavaScript parses successfully. Live GitHub Pages and saved-data regression tests remain pending; no Apify scan was run.
 - **Limitations:** Condition, battery health, storage parsing errors, duplicate listings, regional variants, network omissions, seller reliability and actual completed-sale values remain unresolved. Broader marketplace discovery and richer confidence scoring are future work.
+
+
+## October 23, 2026 — Claude / ChatGPT responsibilities and handoff
+
+- **Claude:** lead on complex architecture, actor-schema investigation, geographic discovery debugging, scalable data acquisition, major refactors, performance improvements, and automated testing.
+- **ChatGPT:** targeted fixes, patch integration and review, Android screenshot verification, issue tracking, documentation, and preparation of focused Claude handoffs.
+- **Shared rules:** inspect latest GitHub state before editing, avoid concurrent edits to the same file, preserve local data and credentials, use focused commits, and never initiate paid Apify runs without explicit user approval.
+- **Current handoff:** Claude's geographic discovery proposal was integrated with minor safety/UI corrections; browser and paid actor behavior remain unverified. The next priority is to validate location accuracy and cost using one approved probe.
