@@ -188,3 +188,10 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - Existing saved keyword scan remained at 3 searches and showed 5 results within the selected 60 km radius; category test did not overwrite saved listings.
 - **Decision:** Do not switch production discovery to this category URL. Investigate actor-supported location inputs / canonical location identifiers / URL handling before any further paid test. Do not assume PH proxy alone enforces Philippine location.
 - **Evidence:** User-provided Android screenshot of test summary (October 23, 2026). No billing amount confirmed.
+
+
+### FR-DISCOVERY-01 — Category discovery test result (October 23, 2026)
+- **Observed on Android:** 24 returned, 1 phone-like, **0 Bohol-recognized**. Sample results were from Mill Valley, Concord, San Francisco, San Leandro, Milpitas, Sunnyvale and Castro Valley, California.
+- **Conclusion:** The experimental `/marketplace/tagbilaran/electronics/` URL with PH proxy and one page did **not** constrain results to Bohol. Do not replace the existing keyword scanner or treat the PH proxy as location enforcement.
+- **Next investigation:** Verify actor's supported URL and location input schema and whether it accepts geographic search URLs, authenticated marketplace context, or latitude/longitude together with category browsing. Do not spend further credits without validating inputs; keep the test isolated from saved listings.
+- **Status:** Test completed; geographic relevance failed. Source: user's screenshot of category test report.
