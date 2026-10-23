@@ -154,3 +154,13 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - **Export JSON**, **Copy logs**, and **Clear logs** controls. No additional Apify scan required for filter audits.
 - Token redaction attempts to remove Apify token strings; nevertheless, exported logs can contain listing titles, city/state, prices, and URLs if future events add them. Review before sharing. Stored locally, not automatically sent to GitHub or ChatGPT.
 - Limitations: logging begins only after this version is loaded, existing prior searches are not retrospectively recorded; initial raw records rejected by `clean()` are not stored; localStorage can be erased by browser cleanup. Browser runtime and export behavior need phone testing.
+
+## PSGC geography upgrade — first phase (October 23, 2026)
+
+- Source: user-provided PSA **PSGC 3Q 2026 Publication Datafile.xlsx**, worksheet `PSGC`, dated 30 September 2026. PSA attribution required by source metadata.
+- Extracted the 48 Bohol municipality/city names from the official data and embedded an offline name list in `index.html`. No PSA API key required.
+- Normalizes `City of Tagbilaran` / `Tagbilaran City` / `Tagbilaran` for municipality lookup and existing coordinates. Recognizes Calape and Trinidad as Bohol municipalities, though distance remains unknown until separately verified coordinates are supplied.
+- Explicit ambiguity guard for shared municipality names (e.g. Valencia, Carmen, Danao, Alicia, Anda, Buenavista, Pilar, San Isidro, San Miguel). Such names require explicit Bohol province evidence rather than being blindly assigned.
+- Some common Cebu aliases now recognized; full nationwide/province coordinate mapping and ambiguous town resolution remain outstanding.
+- **Important:** PSGC administrative names are not geocoordinates. No invented coordinates added. Radius filtering still excludes municipalities without verified coordinates. Need coordinate source, then test against the user's 167 cached listings and latest rejected-listing logs.
+- Source attribution: Philippine Statistics Authority (PSA), Philippine Standard Geographic Code (PSGC), 3rd Quarter 2026.
