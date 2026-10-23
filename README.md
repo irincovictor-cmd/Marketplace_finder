@@ -6,6 +6,14 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 
 **Status (October 22, 2026):** MVP. The interface is complete. Live data through Apify is built but has not been verified from this standalone version yet (see PLAN.md for the test checklist).
 
+## October 23, 2026 update — location and pricing safeguards
+
+- **Search radius now filters displayed listings**, not just the Apify request. The reference point is the selected **Distance from town** town, using approximate town-center coordinates. Unknown towns are excluded from radius-filtered search results.
+- **Province filter** operates separately from radius. Select **All** to allow listings from other provinces *within the chosen radius*; select a province to restrict further. Distance is straight-line, not driving distance.
+- **Nearest (approx.)** sorts eligible listings by town-center distance. For a nearest-first view, select this sort option.
+- **Limitations:** Only towns in the app's coordinate lookup can be included. The actor's search location accuracy is unverified; missing/ambiguous geodata can cause valid listings to be hidden. The scan center uses the chosen town.
+- **Deal scoring:** Estimates are based on scraped asking prices, **not completed sales**. Live listings with fewer than five similar-title comparables are labeled **Unverified**, and the listing detail calls the estimated difference an asking-price spread rather than guaranteed profit. Manual calculator results still depend on user-entered resale price and expenses. AI integration has **not** been added; it would require a reliable pricing dataset, safeguards, and a secret-key backend.
+
 ## Features
 
 - **Home:** category shortcuts and the best deals in Bohol.
