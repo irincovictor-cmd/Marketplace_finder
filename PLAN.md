@@ -98,3 +98,22 @@ See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and t
 
 - If listings stop loading, check the Apify usage page (credit used up?) and the actor's page for notices before changing code.
 - All scraper-specific code is in two places: the `refresh` function (request) and the `clean` function (field names and filters).
+
+## Deferred feature: AI Listing Inspector (backlog, October 23, 2026)
+
+**Status: documented only, not implemented.** Revisit after search accuracy is verified.
+
+- Inspect titles, descriptions, and available photos for inconsistent specifications, missing model names, suspicious claims, and duplicate listings.
+- For uncertain device identities, use optional vision AI to suggest possible models/variants with confidence and an explicit "unknown" outcome. Verify specifications against permitted trustworthy sources and show citations. AI cannot establish authenticity or true resale price.
+- Prefer deterministic checks first, then on-demand AI for selected listings; cache inspections to control costs.
+- GitHub Pages can remain the frontend. AI API calls should go through a secured serverless backend with protected keys, authentication, rate limits, and quotas. Do not put provider keys in public JavaScript.
+- Risks: similar-looking devices, unclear/expired images, unreliable descriptions, hallucinations, research access rules, privacy and cost.
+
+### Current top priority: accurate Marketplace search
+
+1. Inspect actual location fields from Apify and compare to the locations shown in original Marketplace links. Verify whether the actor honors the requested coordinates.
+2. Use the Rejected Listings inspector to investigate the 158 exclusions shown in the last screenshot; focus on raw city/state, interpreted province, and unknown towns.
+3. Expand location normalization and Bohol municipality coverage based on real returned data, not assumptions. Keep strict radius filtering and unknown-location diagnostics.
+4. Test Tagbilaran / 40 km / Bohol / Nearest, then compare All province. Confirm every displayed result passes location/radius and is sorted by approximate distance.
+5. Check per-keyword raw, cleaned, category, province, and radius counts; verify actual listing titles, prices, categories, and URLs.
+6. Avoid repeated paid scans until saved data is diagnosed; use one narrow test keyword when necessary.
