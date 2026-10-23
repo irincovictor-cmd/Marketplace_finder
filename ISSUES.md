@@ -180,3 +180,11 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - Test runs only after user confirmation and uses the token stored locally in the browser; no token is committed. It reports returned items, phone-like listings, detected brand labels, Bohol-recognized locations and sample titles; results are logged as `category_test_result` (or `category_test_error`). Existing `fr_live` and keyword scanner remain unchanged.
 - Actor documentation supports category URLs but **the exact Tagbilaran slug and local category results are unverified**. Dataset response `limit=24` caps returned items, not necessarily actor-side billed work. Run can incur charges.
 - **Status:** Code committed and JavaScript syntax checked. User must trigger one test from their browser. Review Logs and Apify actual run charges before choosing a discovery strategy.
+
+
+### FR-DISCOVERY-01 — First category URL test result (October 23, 2026; Android)
+- User-triggered test completed: **24 returned**, **1 phone-like** (heuristic), **0 Bohol-recognized**.
+- Sample results were from California (Mill Valley, Concord, San Francisco, San Leandro, Milpitas, Sunnyvale, Castro Valley), despite targeting `https://www.facebook.com/marketplace/tagbilaran/electronics/` with PH proxy. This shows the requested URL did **not** yield local Bohol results in this test. Exact reason not yet established.
+- Existing saved keyword scan remained at 3 searches and showed 5 results within the selected 60 km radius; category test did not overwrite saved listings.
+- **Decision:** Do not switch production discovery to this category URL. Investigate actor-supported location inputs / canonical location identifiers / URL handling before any further paid test. Do not assume PH proxy alone enforces Philippine location.
+- **Evidence:** User-provided Android screenshot of test summary (October 23, 2026). No billing amount confirmed.
