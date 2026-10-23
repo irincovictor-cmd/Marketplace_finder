@@ -132,3 +132,17 @@ This log separates **Open**, **Resolved (needs regression testing)**, and **Inve
 - Added expandable **Rejected listings / filter inspector** on Search. It shows each excluded saved listing, price, raw city/state, interpreted province, approximate distance, all failed filter reasons, and original Marketplace URL when present. Includes rejection-reason selector and limits display to first 80 per selection to avoid overloading mobile browsers.
 - The inspector evaluates **saved cleaned listings only**. Records discarded before storage by `clean()` cannot be reconstructed from localStorage. No additional Apify calls are required to inspect saved listings.
 - Follow-up: Review raw city/state of excluded listings on device; expand recognized municipality lookup and investigate Apify geocoding based on actual examples. Check inspector interactions and persistence in Android browser.
+
+
+## Deferred idea: AI Listing Inspector
+
+Backlog only; not deployed. Future photo-based device identification, listing inconsistency checks, specification verification, confidence reporting, and seller questions. Secure serverless API proxy and cost limits required. Blocked on trustworthy search/location and model data.
+
+## Current focus: search accuracy
+
+- Last observed: 159 saved → 149 budget → 95 category → 1 province → 1 within 40 km; separate last-scan diagnostic: 144 raw → 89 cleaned → 1 Bohol-recognized. These are different populations.
+- Investigate rejected records' raw city/state, interpreted province, and unknown-town cases before changing location logic.
+- Verify actor geotargeting with actual logs and Marketplace listing locations. Previous runs showed a NYC search URL despite Philippine coordinates.
+- Test strict radius and nearest ordering with known towns. Expand Bohol town lookup only after collecting examples.
+- Inspector currently covers saved cleaned listings, not items discarded by initial cleaning; consider bounded diagnostic capture later.
+- Avoid new broad scans until existing data is inspected.
