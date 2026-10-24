@@ -1,0 +1,6 @@
+{
+  "name": "flipradar",
+  "private": true,
+  "description": "FlipRadar tests. The app itself is static HTML served by GitHub Pages.",
+  "scripts": { "test": "node --test tests/*.test.js" }
+}
