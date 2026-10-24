@@ -253,3 +253,31 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 5. Bisaya/Tagalog classifier cues were taken from titles seen so far; expect misses.
 6. The unique Bohol total across 8 searches in the last scan cannot be reconstructed from the log (only 12 sample titles per keyword were stored). The new report records it.
 7. If nearest-first fails, evaluate `blackfalcondata/facebook-marketplace-scraper` (documents categories and a strict-radius option). It is new and unreviewed; its schema has not been read in full.
+
+
+## October 25, 2026 — verified handoff and issue status reconciliation
+
+**Evidence standard:** Code inspected on GitHub main; syntax-only checks were reported for patch integration and subsequent UI changes. No full Android regression, current full Node test run, or additional paid Apify test has been verified by ChatGPT. Earlier sections are historical snapshots and may describe superseded behavior.
+
+| Issue | Current status | Evidence / remaining work |
+|---|---|---|
+| FR-001 Slow sequential scanning | PARTIALLY FIXED | Up to two concurrent searches, progress and incremental saves are implemented; 20-second 3-keyword scan reported Oct 24, not a controlled performance benchmark. Cancellation and cost optimization remain open. |
+| FR-002 Results disappear behind filters | PARTIALLY FIXED | Filter funnel, rejected-listing inspector and diagnostics implemented; geographic false negatives still possible. |
+| FR-003 Geographic targeting / actor ignores coordinates | OPEN — BLOCKER | Oct 24 location probe: 24 returned, only 1 Bohol-recognized despite Tagbilaran / 40 km / strict filtering; country metadata unknown. Cebu results remain dominant. Category/URL and nearest-first behavior not proven. |
+| FR-004 Bohol recognition | PARTIALLY FIXED | Normalization and broader municipality geography implemented; ambiguous/missing actor metadata and unknown town distances remain unresolved. Verify bohol-geography.json availability and loading. |
+| FR-005 Smart profit detector | DEPRIORITIZED BY OWNER | Owner wants comprehensive device listings by budget/location, not predictive resale scoring. Keep manual profit calculator; avoid investing in automatic profit engine. |
+| FR-006 Partial scan results lost on later failure | CODE FIXED — NEEDS REGRESSION | Successful keyword batches saved incrementally; simulate a failed keyword in tests. |
+| FR-007 Token / untrusted data security | OPEN | Token remains in localStorage and API request URL; inspect escaping, link validation and accidental log leakage. |
+| FR-008 daysSinceListed validation | FIXED | Numeric to string input correction. |
+| FR-009 Facebook redirect loses listing | FIXED / USER CONFIRMED | Normal HTTPS links replaced forced intent deep links. |
+| FR-010 All category validation | FIXED, COST RISK OPEN | All-category accepted but potentially many paid searches. |
+| FR-011 Phone specifications link | IMPLEMENTED | GSMArena search shortcut; variant accuracy unverified. |
+| FR-012 Search UI overcrowded | CODE FIXED — NEEDS ANDROID CHECK | Oct 25: location controls, advanced options and scan diagnostics moved into collapsible sections; simpler labels. Commit f3198014f9066abbafaa213a858b4cf8333f84e1. |
+| FR-013 Returning from listing jumps to top | PARTIALLY FIXED | Oct 25: app's own Back button now remembers/restores scroll position with requestAnimationFrame. Commit 712d8c51cc5e8c0421583aef71faad5efa0d2524. Android system Back gesture, external Facebook return, filter state, browser history and list re-render still need testing. |
+| FR-014 Phone brand coverage | OPEN — HIGH | Main scan still uses KW.Phones = [iphone,samsung,redmi]. Optional adaptive discovery is not a complete replacement; title-matching cleaner discards valid nonmatching device titles. Need category-first where actor supports it, broad fallback and dedupe, with bounded spend. |
+| FR-015 Category selection / miscategorized sellers | OPEN — HIGH | Marketplace has categories, but support for category IDs/URLs in curious_coder/facebook-marketplace actor is unverified. Test schema without paid runs; retain category-misfiled phone ads via general queries and classifier. |
+| FR-016 Browser history / persistent scroll | OPEN | App uses internal S.d navigation, not browser history. Address native Android Back, scroll position and returning from external links without resetting or losing search controls. |
+
+**Oct 24 diagnostic snapshot (user-exported logs):** regular scan 3 keywords (iPhone, Samsung, Redmi), 144 raw, 57 cleaned, 4 Bohol-recognized, 0 failed, ~20 s; separate strict location probe 24 returned, 1 Bohol-recognized, 20 phone-like. These figures do **not** establish Phase 2 nearest-first effectiveness. No paid run was initiated while preparing this handoff.
+
+**User's clarified acceptance criteria:** In Phones, display every plausible phone brand that falls within selected budget and configured area; do not require a brand-name match. Prioritize newest and nearest listings, accurate location evidence, visible unknown-location review, and direct seller links. Do not silently mislabel unknown-location listings as inside radius. Separate search-source coverage from client-side filters. Avoid claiming exhaustive Facebook inventory or reliable actor geofencing without proof.
