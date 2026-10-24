@@ -1,0 +1,399 @@
+From 55bd09dde2cf1a5cfbc6de81b0d0433eb2a3e6fe Mon Sep 17 00:00:00 2001
+From: "FlipRadar dev (Claude)" <dev@example.invalid>
+Date: Sat, 24 Oct 2026 07:10:45 +0000
+Subject: [PATCH 1/3] Add listing classifier and adaptive discovery modules
+ with unit tests
+
+---
+ classify.js             | 97 +++++++++++++++++++++++++++++++++++++++++
+ discovery.js            | 78 +++++++++++++++++++++++++++++++++
+ package.json            |  6 +++
+ tests/classify.test.js  | 97 +++++++++++++++++++++++++++++++++++++++++
+ tests/discovery.test.js | 69 +++++++++++++++++++++++++++++
+ 5 files changed, 347 insertions(+)
+ create mode 100644 classify.js
+ create mode 100644 discovery.js
+ create mode 100644 package.json
+ create mode 100644 tests/classify.test.js
+ create mode 100644 tests/discovery.test.js
+
+diff --git a/classify.js b/classify.js
+new file mode 100644
+index 0000000..df159c4
+--- /dev/null
++++ b/classify.js
+@@ -0,0 +1,97 @@
++/* FlipRadar listing classifier.
++ * Works in the browser (window.FRClassify) and in Node (require("./classify.js")).
++ * classify(title, price) -> { cls, kind, reason, flags }
++ *   cls:  "device"    genuine device offered for sale
++ *         "accessory" accessory or replacement part
++ *         "repair"    repair / unlock / service advertisement
++ *         "wanted"    buying request
++ *         "review"    ambiguous; keep visible and let the user decide
++ *   kind: "phone" | "tablet" | "wearable" | "laptop" | "console" | "other"
++ *   flags: e.g. "defective", "parts-only", "swap", "very-low-price"
++ * Heuristics are intentionally conservative: when unsure, return "review".
++ */
++(function (root, factory) {
++  if (typeof module === "object" && module.exports) module.exports = factory();
++  else root.FRClassify = factory();
++})(typeof self !== "undefined" ? self : this, function () {
++  var BRANDS = "iphone|apple|samsung|galaxy|redmi|xiaomi|poco|mi|oppo|vivo|realme|infinix|tecno|honor|huawei|oneplus|pixel|motorola|moto|nubia|iqoo|nothing|zte|itel|cherry|cloudfone|myphone|sony|xperia|asus|rog|lenovo";
++  var RX = {
++    wanted: /\b(wtb|wanted|looking for|we buy|i buy|buying|binibili|bumibili|bilhan|paliton|iso|mo ?palit ko|palit ko|pm sa naay)\b/,
++    // "pm sa mupalit" / "mupalit" means "message me if you want to buy" and is a SELLING cue, so it is not listed above.
++    sellCue: /\b(for sale|sale|selling|sell|swap|rush|mupalit|available|pm|brandnew|brand new|bnew)\b/,
++    repairService: /\b(repair(?:s|ing)?\s*(?:center|centre|shop|service|services|store)|repair\s*\/\s*center|(?:gadget|phone|cellphone|iphone|mobile|laptop)\s+repair|we repair|pa-?repair|screen replacement service|unlocking|unlock service|icloud\s*(?:unlock|bypass|removal)|software\s*(?:service|flash)|flashing|jailbreak)\b/,
++    bareRepair: /\brepair(?:s|ing)?\b/,
++    accessoryNoun: /\b(cases?|casing|covers?|chargers?|charging (?:cable|adapter|adaptor)|cables?|adapters?|adaptors?|power ?banks?|holders?|stands?|tripods?|lens(?:es)?|tempered glass|screen protectors?|protectors?|straps?|bands?|earphones?|earbuds?|headsets?|headphones?|airpods|speakers?|mounts?|gimbals?|selfie|sim tray|sim ejector|lcd|screens?|displays?|housing|back ?covers?|flex|batter(?:y|ies)|spare parts?|memory cards?|sd cards?|usb|otg|keyboards?|mouse|pouch|sleeve|ring light)\b/,
++    partsOnly: /\b(for parts|parts only|spare ?parts?|for repair|needs? repair|lcd issue|screen issue|cracked|crack screen|broken|guba|defective|dead|no power|icloud locked|activation lock)\b/,
++    storage: /\b(16|32|64|128|256|512|1024)\s?gb\b|\b(1|2)\s?tb\b|\b\d{1,2}\s?[+\/]\s?(32|64|128|256|512)\b/,
++    tablet: /\b(ipad|tablet|tab\s?[a-z]?\d+|galaxy tab|matepad|redmi pad|mi pad|xiaomi pad|lenovo tab|tab a\d+|pad \d+)\b/,
++    wearable: /\b(smart ?watch|galaxy watch|apple watch|watch \d|band \d|galaxy fit|amazfit|mi band)\b|\bwatch\b/,
++    laptop: /\b(laptop|macbook|notebook|thinkpad|vivobook|ideapad|chromebook|legion|nitro)\b/,
++    console: /\b(ps5|ps4|ps3|playstation|xbox|nintendo|switch|steam deck|rog ally)\b/,
++    otherKind: /\b(monitors?|refrigerators?|ref|tv|television|washing machine|aircon|air ?conditioner|microwave|soundbar|printer|projector|rice cooker|oven|freezer|electric fan|router|dslr|mirrorless|gopro|cctv|webcam|drone|rtx|gtx|ryzen|motherboard|ssd|nvme|gpu|ddr[2345]|sodimm|dimm)\b/,
++    phoneWord: /\b(cell ?phones?|smart ?phones?|mobile phones?|android phones?|phones?|cp|unit)\b/,
++    model: new RegExp("\\b(?:" + BRANDS + ")(?![a-z])(?:\\s+[a-z]{1,10}){0,3}?[\\s-]*[a-z]?\\d{1,3}[a-z+]{0,4}|\\b(?:iphone|samsung|galaxy|redmi|poco|realme|oppo|vivo|infinix|tecno)[a-z]?\\d{1,3}"),
++    iphoneModel: /\b(?:iphone|ip)\s*(?:\d{1,2}|x[rs]?|se|xs max)\b/
++  };
++
++  function normalize(t) {
++    return String(t == null ? "" : t)
++      .toLowerCase()
++      .replace(/[\u2000-\u206f\u2190-\u2bff\ufe0f\ud800-\udfff]/g, " ")   // emoji and symbol noise
++      .replace(/^\S+$/, function (m) { return m.indexOf("+") > -1 && !/\w\+$/.test(m) ? m.replace(/\+/g, " ") : m; })
++      .replace(/_+/g, " ")
++      .replace(/\s+/g, " ")
++      .trim();
++  }
++  function has(rx, t) { return rx.test(t); }
++  function hasModel(t) { return RX.model.test(t) || RX.iphoneModel.test(t); }
++  function hasStorage(t) { return RX.storage.test(t); }
++
++  function kindOf(t) {
++    if (RX.otherKind.test(t) && !hasStorage(t)) return "other";
++    if (RX.tablet.test(t)) return "tablet";
++    if (RX.laptop.test(t)) return "laptop";
++    if (RX.console.test(t)) return "console";
++    if (RX.wearable.test(t) && !/\b(phone|iphone)\b/.test(t)) return "wearable";
++    if (RX.otherKind.test(t)) return "other";
++    if (hasModel(t) || RX.phoneWord.test(t) || new RegExp("\\b(?:" + BRANDS + ")(?![a-z])").test(t)) return "phone";
++    return "other";
++  }
++
++  function classify(title, price) {
++    var t = normalize(title), flags = [], kind = kindOf(t), p = Number(price);
++    function out(cls, reason) { return { cls: cls, kind: kind, reason: reason, flags: flags }; }
++
++    if (RX.partsOnly.test(t)) flags.push(/for parts|parts only|spare/.test(t) ? "parts-only" : "defective");
++    if (/\bswap\b/.test(t)) flags.push("swap");
++
++    // 1. Buying requests. "pm sa mupalit" is a selling cue and is deliberately not matched here.
++    if (RX.wanted.test(t) && !/\bfor sale\b/.test(t)) return out("wanted", "Buying request wording");
++
++    // 2. Repair services. A sale listing that merely mentions a defect stays a device.
++    if (RX.repairService.test(t)) return out("repair", "Repair or unlock service wording");
++    if (RX.bareRepair.test(t) && !RX.sellCue.test(t) && !hasStorage(t) && !/\b(for repair|needs? repair)\b/.test(t))
++      return out("repair", "Repair wording without sale cues");
++
++    // 3. Accessories and parts. A storage size means a whole device, so it overrides noun matches such as "lcd issue".
++    if (!hasStorage(t) && RX.accessoryNoun.test(t)) {
++      var adjacent = new RegExp("(?:\\b(?:" + BRANDS + ")\\b(?:\\s+[a-z0-9+]{1,10}){0,3}\\s+)(?:cases?|covers?|chargers?|cables?|protectors?|holders?|lcd|screens?|displays?|batter(?:y|ies)|housing|back ?covers?|straps?|bands?|tempered glass)\\b").test(t);
++      var startsWithAccessory = /^(?:cases?|covers?|chargers?|cables?|holders?|stands?|tripods?|power ?banks?|tempered glass|screen protectors?|earphones?|earbuds?|headsets?|speakers?|usb|memory cards?)\b/.test(t);
++      var withDevice = /\b(with|w\/|free|plus|complete|inclusive)\b/.test(t) && hasModel(t) && !adjacent;
++      if (!withDevice && (adjacent || startsWithAccessory || !hasModel(t) || /\bcharger\b.*\bcharger\b/.test(t) || /\+.*\bcharger\b/.test(String(title).toLowerCase())))
++        return out("accessory", "Accessory or replacement part wording");
++    }
++
++    // 4. Non-phone devices are genuine items for sale, just not phones.
++    if (kind !== "phone") return out("device", "Not a phone (" + kind + ")");
++
++    // 5. Phones: need a model or storage to count as a clearly identified device.
++    if (hasStorage(t) || hasModel(t)) {
++      if (Number.isFinite(p) && p > 0 && p < 800) { flags.push("very-low-price"); return out("review", "Very low price for a device; may be a part or deposit"); }
++      return out("device", hasModel(t) ? "Model identified" : "Storage size identified");
++    }
++    return out("review", "No model or storage identified");
++  }
++
++  return { classify: classify, kindOf: function (t) { return kindOf(normalize(t)); }, normalize: normalize };
++});
+diff --git a/discovery.js b/discovery.js
+new file mode 100644
+index 0000000..e031867
+--- /dev/null
++++ b/discovery.js
+@@ -0,0 +1,78 @@
++/* FlipRadar discovery helpers: dedupe-aware yield, keyword history, adaptive term choice, cost estimate.
++ * Pure functions, no DOM or network. Browser: window.FRDiscovery. Node: require("./discovery.js").
++ */
++(function (root, factory) {
++  if (typeof module === "object" && module.exports) module.exports = factory();
++  else root.FRDiscovery = factory();
++})(typeof self !== "undefined" ? self : this, function () {
++  var PRICE_PER_ITEM_USD = 0.0005;   // actor pricing page, basic listing item (checked 2026-10-23); an ESTIMATE, not billing
++  var PRICE_PER_RUN_USD = 0.00005;
++  var REVISIT_AFTER_SCANS = 5;       // a proven-zero term is retried after this many scans
++  var PROVEN_ZERO_RUNS = 3;
++
++  function estimateCostUsd(rawItems, runs) {
++    return Math.round((rawItems * PRICE_PER_ITEM_USD + runs * PRICE_PER_RUN_USD) * 1e5) / 1e5;
++  }
++
++  /* results: ordered [{k, listings:[{id, local:boolean, device:boolean}], raw:number}]
++   * A listing counts for the FIRST keyword that returned it; later repeats are duplicates. */
++  function computeYield(results, seenIds) {
++    var seen = seenIds || new Set(), out = [];
++    results.forEach(function (r) {
++      var y = { k: r.k, raw: r.raw || 0, cleaned: r.listings.length, unique: 0, duplicates: 0, localUnique: 0, deviceLocalUnique: 0 };
++      r.listings.forEach(function (l) {
++        var id = String(l.id);
++        if (seen.has(id)) { y.duplicates++; return; }
++        seen.add(id); y.unique++;
++        if (l.local) { y.localUnique++; if (l.device) y.deviceLocalUnique++; }
++      });
++      out.push(y);
++    });
++    return out;
++  }
++
++  function recordScan(history, yields) {
++    var h = JSON.parse(JSON.stringify(history || {}));
++    h.__scans = (h.__scans || 0) + 1;
++    yields.forEach(function (y) {
++      var e = h[y.k] || { runs: 0, raw: 0, unique: 0, localUnique: 0, deviceLocalUnique: 0, lastScan: 0 };
++      e.runs++; e.raw += y.raw; e.unique += y.unique; e.localUnique += y.localUnique;
++      e.deviceLocalUnique += y.deviceLocalUnique; e.lastScan = h.__scans;
++      h[y.k] = e;
++    });
++    return h;
++  }
++
++  function provenZero(e) { return e && e.runs >= PROVEN_ZERO_RUNS && e.deviceLocalUnique === 0; }
++
++  /* Untried terms first (exploration), then best devices-per-run; proven-zero terms rest for a few scans. */
++  function pickDiscoveryTerms(history, pool, max) {
++    var h = history || {}, scans = h.__scans || 0, picks = [];
++    var rows = pool.map(function (k, i) {
++      var e = h[k];
++      return { k: k, i: i, runs: e ? e.runs : 0, score: e && e.runs ? e.deviceLocalUnique / e.runs : Infinity,
++               resting: !!(e && provenZero(e) && scans - e.lastScan < REVISIT_AFTER_SCANS) };
++    });
++    rows = rows.filter(function (r) { return !r.resting; });
++    rows.sort(function (a, b) { return (b.score - a.score) || (a.runs - b.runs) || (a.i - b.i); });
++    rows.slice(0, Math.max(0, max)).forEach(function (r) { picks.push(r.k); });
++    return picks;
++  }
++
++  function summarizeHistory(history) {
++    var h = history || {}, rows = [];
++    Object.keys(h).forEach(function (k) {
++      if (k === "__scans") return;
++      var e = h[k];
++      rows.push({ k: k, runs: e.runs, raw: e.raw, localUnique: e.localUnique, deviceLocalUnique: e.deviceLocalUnique,
++                  perRun: e.runs ? Math.round(e.deviceLocalUnique / e.runs * 10) / 10 : 0,
++                  costUsd: estimateCostUsd(e.raw, e.runs), provenZero: !!provenZero(e) });
++    });
++    rows.sort(function (a, b) { return b.perRun - a.perRun || a.k.localeCompare(b.k); });
++    return rows;
++  }
++
++  return { estimateCostUsd: estimateCostUsd, computeYield: computeYield, recordScan: recordScan,
++           pickDiscoveryTerms: pickDiscoveryTerms, summarizeHistory: summarizeHistory,
++           PRICE_PER_ITEM_USD: PRICE_PER_ITEM_USD, PRICE_PER_RUN_USD: PRICE_PER_RUN_USD };
++});
+diff --git a/package.json b/package.json
+new file mode 100644
+index 0000000..17abb89
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,6 @@
++{
++  "name": "flipradar",
++  "private": true,
++  "description": "FlipRadar tests. The app itself is static HTML served by GitHub Pages.",
++  "scripts": { "test": "node --test tests/*.test.js" }
++}
+diff --git a/tests/classify.test.js b/tests/classify.test.js
+new file mode 100644
+index 0000000..510bc36
+--- /dev/null
++++ b/tests/classify.test.js
+@@ -0,0 +1,97 @@
++const test = require("node:test");
++const assert = require("node:assert");
++const { classify } = require("../classify.js");
++
++// Titles marked (real) were seen in FlipRadar's exported scan logs of 2026-10-23.
++const CASES = {
++  device: [
++    "REDMI A7 PRO 4GB RAM 64GB ROM",                                   // (real)
++    "OPPO A5s",                                                         // (real)
++    "Samsung Galaxy Note20 5G\n256GB",                                  // (real)
++    "Sell my iphone 13 pro max 256gb any sim safe to reset working all", // (real)
++    "Infinix Hot 60Pro+ (Curvescreen)\n256gb GamingPhone",              // (real)
++    "Redmi note 15 5g 8+256",                                           // (real)
++    "For Sale Iphone 13 pro 256gb",                                     // (real)
++    "SAMSUNG A54 5G 128GB",                                             // (real)
++    "Sale iPhone xr lcd issue 128GB",                                   // (real) defective but still a device
++    "Redmi 9t",                                                         // (real)
++    "Realme narzo 50A prime",                                           // (real)
++    "Poco X6 Pro 12/512 5G",
++    "Tecno Spark 20 128gb 4G",
++    "Vivo Y27 128GB",
++    "iPhone 13 128gb with charger and box",
++    "iPhone xr",
++    "REDMI A3 128GB NO ISSUES ALL GOODS GAMITON UG DUGAY MA LOWBAT CLEAR CAMERA GAMING PHONE", // (real) "camera" must not make it a camera
++    "fore+sale+iphone7plus+",                                           // (real) URL-style title
++    "SamsungA07",                                                       // (real) no space after brand
++  ],
++  accessory: [
++    "iPhone+charger+and+Infinix+charger+type+C+",                       // (real, 700 pesos)
++    "iPhone 13 case",
++    "Samsung A54 tempered glass",
++    "Phone holder for car",
++    "iPhone 11 lcd replacement original",
++    "Samsung 25W fast charger",
++    "Powerbank 20000mah",
++    "iPhone 12 Pro Max back cover",
++    "Original Samsung battery for Galaxy S9",
++  ],
++  repair: [
++    "B&J IPhone Repair/Center",                                         // (real)
++    "Cellphone repair services",
++    "GADGET REPAIR SHOP Tagbilaran",
++    "iCloud unlock service",
++    "Software flashing and unlocking",
++  ],
++  wanted: [
++    "guba cellphone paliton",                                           // (real) buying broken phones
++    "CELLPHONE GUBA PALITON",                                           // (real)
++    "WTB iPhone 11",
++    "Looking for Samsung A54",
++    "Buying used cellphones any brand",
++    "Binibili namin ang iyong cellphone",
++    "MO PALIT KO GUBA NGA IPHONE",                                      // (real) "I will buy your broken iPhone"
++    "Guba+nga+iphone+x+pataas+paliton+nako+pm+dayon",                   // (real)
++  ],
++  review: [
++    "Cell phone",                                                       // (real)
++    "cellphone",                                                        // (real)
++    "Cellphone+",                                                       // (real)
++    "cellphone gadgets no issue pm sa mupalit",                         // (real) selling cue but no model
++    "iPhone Brandnew & Good as new \u203c\ufe0f",                       // (real) brand only
++  ],
++};
++
++for (const [expected, titles] of Object.entries(CASES)) {
++  for (const title of titles) {
++    test(`${expected}: ${title.replace(/\n/g, " ").slice(0, 55)}`, () => {
++      const r = classify(title, 5000);
++      assert.strictEqual(r.cls, expected, `got ${r.cls} (${r.reason}) kind=${r.kind}`);
++    });
++  }
++}
++
++test("non-phone electronics are not classified as phones", () => {
++  const monitor = classify("SAMSUNG ODYSSEY G5 MONITOR BRANDNEW AND SEALED", 8000);
++  assert.strictEqual(monitor.kind, "other");
++  assert.strictEqual(classify("FROST FREE SAMSUNG REFRIGERATOR", 12000).kind, "other");
++  assert.strictEqual(classify("FOR SALE: RAM DDR5 5600mhz 8GB (SAMSUNG)", 2000).kind, "other");   // (real) RAM stick, not a phone
++  assert.strictEqual(classify("1tb Samsung 9100 pro Nvme", 5000).kind, "other");
++  assert.strictEqual(classify("Samsung Galaxy Tab S3 9.7inch. With SIMCARD", 4000).kind, "tablet");
++  assert.strictEqual(classify("HUAWEI MATEPAD 11.5 PAPERMATTE EDITION 256GB", 9000).kind, "tablet");
++  assert.strictEqual(classify("Xiaomi Redmi Pad 2", 7000).kind, "tablet");
++  assert.strictEqual(classify("Rush Sale need funds\nSamsung Galaxy Watch 6 Classic 47mm", 6000).kind, "wearable");
++  assert.strictEqual(classify("REDMI PAD 2 PRO 5G and iPhone XR", 14000).kind !== "other", true);
++});
++
++test("defect flags are kept on genuine devices", () => {
++  const r = classify("Sale iPhone xr lcd issue 128GB", 2500);
++  assert.strictEqual(r.cls, "device");
++  assert.ok(r.flags.includes("defective"));
++});
++
++test("very low price phone goes to review instead of being discarded", () => {
++  const r = classify("iPhone xr", 300);
++  assert.strictEqual(r.cls, "review");
++  assert.ok(r.flags.includes("very-low-price"));
++});
+diff --git a/tests/discovery.test.js b/tests/discovery.test.js
+new file mode 100644
+index 0000000..81cccb1
+--- /dev/null
++++ b/tests/discovery.test.js
+@@ -0,0 +1,69 @@
++const test = require("node:test");
++const assert = require("node:assert");
++const D = require("../discovery.js");
++const POOL = ["phone", "cellphone", "android", "128gb", "256gb"];
++const mk = (id, local, device = true) => ({ id, local, device });
++
++test("computeYield credits a listing only to the first keyword that returned it", () => {
++  const y = D.computeYield([
++    { k: "cellphone", raw: 48, listings: [mk(1, true), mk(2, true), mk(3, false)] },
++    { k: "phone",     raw: 48, listings: [mk(2, true), mk(3, false), mk(4, true)] },
++  ]);
++  assert.deepStrictEqual([y[0].unique, y[0].localUnique, y[0].duplicates], [3, 2, 0]);
++  assert.deepStrictEqual([y[1].unique, y[1].localUnique, y[1].duplicates], [1, 1, 2]);
++});
++
++test("computeYield counts devices separately from other local listings", () => {
++  const y = D.computeYield([{ k: "x", raw: 10, listings: [mk(1, true, true), mk(2, true, false), mk(3, true, true)] }]);
++  assert.strictEqual(y[0].localUnique, 3);
++  assert.strictEqual(y[0].deviceLocalUnique, 2);
++});
++
++test("untried terms are explored first, in pool order", () => {
++  assert.deepStrictEqual(D.pickDiscoveryTerms({}, POOL, 3), ["phone", "cellphone", "android"]);
++});
++
++test("after a scan, proven performers outrank untried-last but untried still go first", () => {
++  let h = D.recordScan({}, D.computeYield([
++    { k: "phone", raw: 48, listings: [mk(1, false)] },
++    { k: "cellphone", raw: 48, listings: [mk(2, true), mk(3, true), mk(4, true)] },
++  ]));
++  const picks = D.pickDiscoveryTerms(h, POOL, 3);
++  assert.deepStrictEqual(picks.slice(0, 2), ["android", "128gb"]);   // untried first
++  assert.ok(picks.includes("cellphone") || picks.length === 3);
++  h = D.recordScan(h, D.computeYield([{ k: "android", raw: 1, listings: [] }, { k: "128gb", raw: 1, listings: [] }, { k: "256gb", raw: 1, listings: [] }]));
++  const next = D.pickDiscoveryTerms(h, POOL, 1);
++  assert.deepStrictEqual(next, ["cellphone"]);                       // best devices per run
++});
++
++test("a term with zero local devices over 3 runs rests, then is retried later", () => {
++  let h = {};
++  for (let i = 0; i < 3; i++) h = D.recordScan(h, D.computeYield([{ k: "android", raw: 48, listings: [mk(100 + i, false)] }]));
++  assert.ok(!D.pickDiscoveryTerms(h, ["android", "phone"], 2).includes("android"));
++  for (let i = 0; i < 5; i++) h = D.recordScan(h, D.computeYield([{ k: "phone", raw: 48, listings: [mk(200 + i, true)] }]));
++  assert.ok(D.pickDiscoveryTerms(h, ["android", "phone"], 2).includes("android"), "should be revisited after resting");
++});
++
++test("one scan alone never retires a keyword", () => {
++  const h = D.recordScan({}, D.computeYield([{ k: "256gb", raw: 48, listings: [mk(1, false)] }]));
++  assert.ok(D.pickDiscoveryTerms(h, POOL, 5).includes("256gb"));
++});
++
++test("history is not mutated by recordScan", () => {
++  const h = { __scans: 1, phone: { runs: 1, raw: 1, unique: 1, localUnique: 0, deviceLocalUnique: 0, lastScan: 1 } };
++  const snapshot = JSON.stringify(h);
++  D.recordScan(h, D.computeYield([{ k: "phone", raw: 1, listings: [] }]));
++  assert.strictEqual(JSON.stringify(h), snapshot);
++});
++
++test("cost estimate: 8 runs x 48 items is about 19 US cents, labelled estimate only", () => {
++  assert.strictEqual(D.estimateCostUsd(384, 8), 0.1924);
++});
++
++test("summarizeHistory reports devices per run and flags proven-zero terms", () => {
++  let h = {};
++  for (let i = 0; i < 3; i++) h = D.recordScan(h, D.computeYield([{ k: "256gb", raw: 48, listings: [] }, { k: "cellphone", raw: 48, listings: [mk(i, true)] }]));
++  const s = D.summarizeHistory(h);
++  assert.strictEqual(s[0].k, "cellphone");
++  assert.strictEqual(s.find(r => r.k === "256gb").provenZero, true);
++});
+-- 
+2.43.0
+
