@@ -101,3 +101,12 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 - Run the suite with `npm test` or `node --test tests/*.test.js` (Node 20+). It loads the real `index.html` in a stubbed browser, so no network or Apify credits are used.
 - `tests/fixtures/scan-2026-10-23-samples.json` holds listing titles and towns from an exported log (no tokens or links).
 - Experimental toggles (all off by default): Strict local filtering, Adaptive brand-independent discovery, Nearest-first sorting. Scan costs shown in the app are estimates from the actor price list; use "Show Apify-reported usage" for Apify's own figures.
+
+
+## October 25, 2026 — current user experience and limitations
+
+**Updated product focus:** Find phones and other devices under a chosen budget in a configured area, regardless of brand. Automatic profit prediction is now lower priority; the manual calculator remains available. Existing descriptions above of the app as a deal-score-first tool are historical and should not be treated as the new acceptance criteria.
+
+**Search interface:** Location/distance settings, advanced scan settings and technical diagnostics are collapsed by default (commit f3198014). The app's own listing-detail Back button restores the previous scroll offset (commit 712d8c5); Android system Back and returning from external Facebook links are not yet validated.
+
+**Known limitations:** The default phone keyword list is still iPhone/Samsung/Redmi; optional adaptive terms do not guarantee all-brand coverage. Facebook Marketplace category support in the selected Apify actor has not been confirmed. October 24 user diagnostics showed 144 raw / 57 cleaned / 4 Bohol-recognized in the three-keyword scan, and 1 Bohol-recognized of 24 in a separate location probe. Apify coordinates and strict filtering have not demonstrated reliable Bohol-only discovery. No additional paid probe was run for this update. See ISSUES.md FR-012 through FR-016 and PLAN.md for Claude's prioritized engineering handoff.
