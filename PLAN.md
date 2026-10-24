@@ -150,3 +150,20 @@ See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and t
 4. Only if step 1 succeeds: enable Nearest-first and Adaptive discovery and run one scan with the screen on and FlipRadar in the foreground (about 6 searches, roughly $0.14 estimated). Compare unique Bohol devices with the last scan (10).
 
 **Coordination:** Claude changes arrive as commits for review; do not edit `index.html` while a Claude patch is pending. Treat every cost figure in the app as an estimate until the usage lookup confirms it.
+
+
+## October 25, 2026 — revised product direction and Claude engineering handoff
+
+**Owner decision:** FlipRadar is primarily a **budget + geographic device finder** for resale opportunities, not a smart-profit predictor. Do not spend another sprint improving automatic resale values or AI scoring. Keep manual profit calculator as optional. The phone search must be brand-independent and include sellers who miscategorize their items.
+
+**Recent code shipped to main:** Phase 2 classifier and adaptive discovery modules plus tests (Oct 23); Search tab decluttered into collapsible location/advanced/diagnostic sections (commit f3198014); in-app detail Back scroll restoration (commit 712d8c5). Both latest changes passed JavaScript syntax checks, not complete Android regression. Current default phone keywords are still iphone/samsung/redmi.
+
+**Claude's next heavy engineering tasks, in priority order:**
+1. Inspect current GitHub main, actor documentation/schema and the existing tests. Determine if curious_coder/facebook-marketplace accepts Marketplace category IDs, category URLs, or only searchKeyword; distinguish verified capabilities from guesses. Avoid paid runs without owner approval.
+2. Design/implement bounded-cost **all-brand Phones discovery**: category-first only if supported, otherwise broad phone/device keywords; catch miscategorized ads, preserve plausible unknown-brand devices, reject accessories/services/wanted ads conservatively, deduplicate across searches, and avoid mandatory search-keyword-in-title filtering for broad discovery. Show actual planned keyword count and seek user confirmation before charges.
+3. Fix geographic correctness: investigate actor's Cebu-heavy results and missing country/province fields; normalize returned locations and support unknown-location review rather than false local claims. Strict radius means verified local listings only, with transparent counts. Actor location requests must not be described as guaranteed filters.
+4. Improve Android navigation: internal Back, system Back, returning from Facebook, stable scroll restoration and preserved search/filter state; use history/popstate where appropriate without breaking GitHub Pages.
+5. Simplify UI around budget, location, category, newest/nearest and listing links. De-emphasize profit scores, keeping manual calculator. Preserve existing localStorage data, settings and saved/watchlist records.
+6. Add/repair deterministic Node tests, fixture-driven classifier/geography/search-cost tests, browser-navigation regression and GitHub Actions CI if practical. Run tests and report exact commands/results. Any live Apify probe requires explicit owner consent and actual usage logging.
+
+**Success definition:** For a chosen budget and configured town/radius, all recognized phone brands can pass the client-side pipeline, non-phones are excluded or reviewable, location-unknown results are clearly separated, no hidden brand keyword gate, returning to a viewed listing retains scroll position, and paid request count is visible before scanning. Geographic inventory completeness remains unverified until approved actor testing.
