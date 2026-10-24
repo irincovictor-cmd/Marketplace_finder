@@ -136,3 +136,17 @@ See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and t
 - **ChatGPT:** targeted fixes, patch integration and review, Android screenshot verification, issue tracking, documentation, and preparation of focused Claude handoffs.
 - **Shared rules:** inspect latest GitHub state before editing, avoid concurrent edits to the same file, preserve local data and credentials, use focused commits, and never initiate paid Apify runs without explicit user approval.
 - **Current handoff:** Claude's geographic discovery proposal was integrated with minor safety/UI corrections; browser and paid actor behavior remain unverified. The next priority is to validate location accuracy and cost using one approved probe.
+
+
+## Phase 2 status and next steps (October 23, 2026)
+**Goal:** maximise unique, relevant, geographically trustworthy, potentially profitable listings per unit of discovery spend.
+
+**Done (unit/mocked-tested only):** classifier, category fix, adaptive discovery terms, duplicate-aware yield report, nearest-first option (off by default), scan timing and wake lock, Apify-reported usage lookup, comparable de-duplication with local vs wider-area counts. See ISSUES.md FR-DISCOVERY-03.
+
+**Next Android test (needs the owner's approval; about $0.01 estimated):**
+1. Search tab: probe term `phone`, probe sort **Nearest first**, tap the probe. Success looks like several Bohol-recognized results, the first one near position 1, and farthest distance close to the radius. Failure looks like the earlier 0 of 24 with Cebu/Dumaguete.
+2. Tap "Show Apify-reported usage" and note the dollar figure for that run.
+3. Export logs (Logs > Export JSON) and share them.
+4. Only if step 1 succeeds: enable Nearest-first and Adaptive discovery and run one scan with the screen on and FlipRadar in the foreground (about 6 searches, roughly $0.14 estimated). Compare unique Bohol devices with the last scan (10).
+
+**Coordination:** Claude changes arrive as commits for review; do not edit `index.html` while a Claude patch is pending. Treat every cost figure in the app as an estimate until the usage lookup confirms it.
