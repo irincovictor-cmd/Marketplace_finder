@@ -94,3 +94,10 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 - Added optional **Strict local filtering** (off by default) and **Brand-independent phone discovery** (off by default). Discovery adds five terms: phone, cellphone, android, 128gb and 256gb, with extra paid requests only after confirmation.
 - Added a request parameter `maxTotalChargeUsd=0.10` per actor run. Whether Apify enforces it for this endpoint is **not yet verified**; do not treat it as a guaranteed billing ceiling. API output `limit` also does not limit all billed work.
 - The current normal scanner remains available. Syntax checked; no live paid test or Android regression test has been performed for these changes.
+
+
+## Tests and new modules (October 23, 2026)
+- `classify.js` classifies listing titles; `discovery.js` holds keyword-history and yield logic. Both are plain scripts loaded by `index.html` and also importable in Node.
+- Run the suite with `npm test` or `node --test tests/*.test.js` (Node 20+). It loads the real `index.html` in a stubbed browser, so no network or Apify credits are used.
+- `tests/fixtures/scan-2026-10-23-samples.json` holds listing titles and towns from an exported log (no tokens or links).
+- Experimental toggles (all off by default): Strict local filtering, Adaptive brand-independent discovery, Nearest-first sorting. Scan costs shown in the app are estimates from the actor price list; use "Show Apify-reported usage" for Apify's own figures.
