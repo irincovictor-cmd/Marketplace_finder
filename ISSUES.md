@@ -212,3 +212,44 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - The coordinate-based probe is a geographic improvement over the earlier California category-URL result, but it does **not yet establish that the requested Bohol center/radius is honored**. Country field extraction is missing or mapped incorrectly.
 - Phone-like heuristic incorrectly includes repair centers, chargers, and motorcycle phone holders; filter needs accessory/service exclusions and better classification.
 - Next: review exported raw probe logs and actor schema, verify submitted center/radius and response geo fields, inspect all 24 locations, and compare against the chosen town and radius. Do not expand paid scans until geotargeting is validated.
+
+
+### FR-DISCOVERY-03 — Evidence review of the 8-search Android scan and what changed (October 23, 2026, Claude)
+**Verified from the exported log (`flipradar-logs-2026-10-23.json`) and the actor's published input schema**
+- `radiusKm` is sent, but Facebook returns listings beyond it. In both the 40 km and 60 km scans most cleaned results were Cebu City, Mandaue, Lapu-Lapu and Dumaguete, about 73-74 km from Tagbilaran. The radius is a hint, not a hard filter. The actor documents `radiusKm` as always kilometres.
+- Bohol supply per search was small and stable: across six earlier 3-search scans, iphone 0-1, samsung 0-1, redmi 2-3 Bohol-recognized of 48 raw. The default sort is newest first, so the 48 newest across a wide area are mostly Cebu.
+- The actor's schema lists `sortBy` options `creation_time_descend`, `price_ascend`, `price_descend` and **`distance_ascend`**. FlipRadar always used newest first. Whether `distance_ascend` puts Bohol first is **untested**.
+- `strictFiltering` ("exclude broad matches: outside location, similar items") exists. Two identical probes with it enabled still returned 0 Bohol of 24, so it has **not been shown to help** here.
+- `maxPrice` exists server-side but is deliberately NOT sent: the comparable-price engine needs the higher-priced listings, including Cebu ones, to find comparables.
+- Misclassification: `cg()` treated any title containing a brand as a Phone. The rejected samples show Samsung monitors, a Samsung refrigerator, tablets and watches passing the Phones category. Probe results also counted a repair centre and chargers as phones.
+- Buying requests are common in Bisaya: "guba cellphone paliton" and "MO PALIT KO GUBA NGA IPHONE" are people wanting to BUY broken phones. "pm sa mupalit" means "message me if you want to buy" and is a selling cue.
+
+**Scan time (282 s for 8 searches), inferred from log timestamps**
+- Six of eight requests finished in roughly 8-12 s each, in line with the earlier 3-search scans (19-28 s total).
+- `cellphone` and `android` both completed within one second of each other, about 249 s after the previous pair. Two independent requests stalling for the same period and finishing together points to the **page being suspended or throttled in the background** (the screenshot shows another app active). This is an inference, not proven. Not an Apify slowdown as far as the log shows.
+- Concurrency is 2 workers. No change made to it.
+
+**Cost: corrected assumptions**
+- Actor price list (checked October 23, 2026): $0.50 per 1,000 basic listing items, $0.00005 per run start. Cost follows items returned, not number of searches. 8 runs x 48 items is about $0.19 **estimated**; the 3-search scan about $0.07. These are estimates, never billing. The new "Show Apify-reported usage" button reads `usageTotalUsd` from Apify's run records.
+- The $0.10 `maxTotalChargeUsd` cap is a documented Apify run parameter for pay-per-event actors, but whether this actor honors it has **not** been verified.
+
+**Implemented (mocked and unit tested; no live Apify run, no Android run)**
+- `classify.js`: classifies a title as device / accessory / repair / wanted / review, plus kind (phone, tablet, wearable, laptop, console, other) and flags (defective, parts-only, swap, very-low-price). Accessories, repair ads and buying requests get the rejection reason "Not a device for sale" and stay visible in the rejected-listings inspector. Unclear titles ("Cellphone") stay in results with a visible warning.
+- Category fix: monitors, fridges, tablets, watches and RAM sticks are no longer Phones.
+- `discovery.js`: duplicate-aware per-keyword yield, persistent keyword history, adaptive discovery term choice (untried first, then best local devices per run, terms with zero local devices after 3 runs rest for 5 scans), cost estimate. Discovery terms per scan are capped at 3.
+- Optional "Nearest-first sorting" toggle (default off) sends `distance_ascend`. The probe has a sort selector so it can be tested for about one cent before using it in scans.
+- Scan report in the diagnostics: searches attempted/completed, raw/cleaned/unique/duplicates, location confidence (province stated / inferred from town name / other province / ambiguous / unknown), requested radius vs how many results fell beyond it and the farthest distance, listing types, per-keyword local yield, slowest request, seconds the page was hidden, estimated cost labelled as an estimate.
+- Screen Wake Lock requested during scans (Android Chrome supports it) to reduce suspension.
+- Comparables: storage written as `8+256` or `12/512` is now read; repost duplicates (same title, price, town) and the listing's own reposts no longer count; accessories, repair, wanted, defective and parts-only listings are excluded; a defective target gets no estimate; each estimate shows how many comparables are in Bohol vs elsewhere, and "Wider-area only" is labelled. The 3-comparable minimum and the 0.85 / PHP 500 formula are unchanged. These remain asking prices, not completed sales.
+- Bug fixes: `filterAudit` split multi-word queries with a double-backslash regex; the location-review link regex rejected URLs containing the letter "s".
+
+**Tests:** `npm test` (or `node --test tests/*.test.js`): 74 tests. 49 classifier cases, 9 discovery, 16 app/regression tests that load the real `index.html` in a stubbed browser, including a mocked end-to-end scan replaying 96 real titles from the log. Many classifier cases use titles from the same log the rules were tuned on, so they are regression tests, not an unbiased accuracy measure. Mutation checks confirmed the tests fail when dedupe, the device exclusion or the spend cap is removed.
+
+**Still unverified / open**
+1. Whether nearest-first sorting returns Bohol listings first (needs one probe, about $0.01 estimated).
+2. Whether `strictFiltering` or `maxTotalChargeUsd` are honored by this actor.
+3. Whether the 282 s was a suspended page.
+4. Actual Apify charges for the last scans (use the usage button).
+5. Bisaya/Tagalog classifier cues were taken from titles seen so far; expect misses.
+6. The unique Bohol total across 8 searches in the last scan cannot be reconstructed from the log (only 12 sample titles per keyword were stored). The new report records it.
+7. If nearest-first fails, evaluate `blackfalcondata/facebook-marketplace-scraper` (documents categories and a strict-radius option). It is new and unreviewed; its schema has not been read in full.
