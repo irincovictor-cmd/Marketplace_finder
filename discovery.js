@@ -45,7 +45,7 @@
 
   function provenZero(e) { return e && e.runs >= PROVEN_ZERO_RUNS && e.deviceLocalUnique === 0; }
 
-  /* Untried terms first (exploration), then best devices-per-run; proven-zero terms rest for a few scans. */
+  /* One slot for the best proven term, then untried terms (exploration), then best devices-per-run; proven-zero terms rest for a few scans. */
   function pickDiscoveryTerms(history, pool, max) {
     var h = history || {}, scans = h.__scans || 0, picks = [];
     var rows = pool.map(function (k, i) {
@@ -55,6 +55,11 @@
     });
     rows = rows.filter(function (r) { return !r.resting; });
     rows.sort(function (a, b) { return (b.score - a.score) || (a.runs - b.runs) || (a.i - b.i); });
+    // Reserve the first slot for the best term that has actually produced local devices, so exploration never crowds out what works.
+    var proven = rows.filter(function (r) { return r.runs > 0 && r.score > 0 && r.score !== Infinity; });
+    proven.sort(function (a, b) { return (b.score - a.score) || (a.i - b.i); });
+    var best = max >= 2 && proven.length ? proven[0] : null;
+    if (best) { picks.push(best.k); rows = rows.filter(function (r) { return r !== best; }); max -= 1; }
     rows.slice(0, Math.max(0, max)).forEach(function (r) { picks.push(r.k); });
     return picks;
   }
