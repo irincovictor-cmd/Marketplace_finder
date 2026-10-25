@@ -295,3 +295,54 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - **Owner confirmed:** FlipRadar's **own Back button**, not Android system Back, still reset to the top after the earlier patch.
 - **Latest targeted change:** Commit `b04fc02f9e09c9453583c821456c94cb999d641a` immediately calls `closeDetail()` and restores scroll before updating browser history. Earlier navigation code already included an anchor-based scroll restore and popstate handling. JavaScript syntax validated; no Android verification yet.
 - **Regression requirement:** Open a listing near the bottom of a long Search result list, press in-app Back, confirm the same card remains in view and filter/sort inputs remain unchanged; repeat multiple times, including after changing sort and after an external Facebook visit.
+
+
+## October 25, 2026 — Phase 3 (Claude): status after implementation
+
+**Evidence standard.** Everything below was verified with deterministic Node tests (`npm test`) that load the real `index.html` in a stubbed browser and a mocked Apify. **No paid Apify run was made. Nothing was tested on an Android phone.** "Fixed" therefore means "implemented and covered by automated tests", not "confirmed on device".
+
+| Issue | Status | Evidence and what remains |
+|---|---|---|
+| FR-017 New discoveries first | **IMPLEMENTED, TESTED (mocked). Android unverified** | `seen.js` registry (`fr_seen_v1`): firstSeenAt, lastSeenAt, scan number, viewedAt per listing id. Default sort "New discoveries first"; NEW badge; "Hide listings I have already opened". 16 registry unit tests plus 12 end-to-end tests. |
+| FR-014 Phone brand coverage | **PARTIALLY FIXED** | Client side is brand independent and tested with 21 phone titles, including makers outside the brand list (Ulefone, Doogee, Cubot, Oukitel, UMIDIGI, Meizu, Lava, Fairphone, Sharp, HMD, Nothing and others). The scanner still needs the owner to run it to prove real-world yield. |
+| FR-015 Category / miscategorised sellers | **PARTIALLY FIXED, category search NOT used in production** | See "Category support: verified facts" below. Broad searches plus classifier catch misfiled phones. |
+| FR-003 Geographic targeting | **OPEN, still a blocker** | Client-side location handling is stricter and more transparent. Whether the actor/Facebook can return mostly-Bohol results is unproven. |
+| FR-013 / FR-016 Back button and scroll | **PATCHED, tested with a fake browser. Android retest pending** | `nav.js`; ChatGPT's immediate in-app Back (b04fc02) behaviour is kept. |
+| FR-007 Untrusted data in HTML | **PARTIALLY FIXED** | Listing links must be https facebook.com (else rebuilt from the numeric id); photo URLs validated and escaped; search box value escaped. The Apify token is still stored in localStorage and sent in the request URL. |
+| FR-005 Smart profit | DEPRIORITISED | No work done. |
+
+### Category support: verified facts about `curious_coder/facebook-marketplace` (README and input schema read on Oct 25, 2026)
+- **Verified:** there is **no category input field** and no category-id field. The README says categories are reached by pasting a Marketplace search URL ("search URLs (category, location, etc.)").
+- **Verified (schema):** `latitude`/`longitude` are **ignored when `urls` are supplied**. Only `radius_in_km` (README: the name the actor adds to a URL it builds) and `sortBy=creation_time_descend` are documented as URL parameters.
+- **Verified:** the README's sample output includes `marketplace_listing_category_id`, `location.latitude/longitude`, `location_text.text`, `location_vanity_or_id` and `reverse_geocode.city_page.id` per listing. The README sample is a vehicle listing fetched with details, so it is **unverified whether search-card results from our requests contain them.** Earlier logs showed the country code missing from search results.
+- **Verified:** README and schema disagree on `strictFiltering`'s default (README true, schema false). FlipRadar always sends it explicitly.
+- **Unverified:** the Facebook location slug or id that makes a category URL resolve to Tagbilaran. The earlier test used `/marketplace/tagbilaran/electronics/`, which returned California listings; the slug is probably not valid.
+- **Decision:** category URLs cannot be combined with coordinates through this actor, so they are not used in scans. An owner-approved probe exists (see Approvals).
+
+### Root causes addressed in this phase
+1. **Brand gate.** Every Phones scan used `iphone`, `samsung`, `redmi` and then dropped any result whose title did not contain that word (for example "Galaxy A54" under "samsung"). Phone scans now never require the search word in the title.
+2. **Silent deletion of real phones.** `clean()` removed any title containing "charger", "cover", "case" and so on (a phone sold "with charger" vanished), removed anything cheaper than 30% of the batch median (cheap phones vanished), and removed over-budget phones at scan time (raising the budget later showed nothing without a new paid scan). For phone scans these are replaced by the classifier; listings are kept and tagged, and the budget applies while browsing. Other categories keep the old behaviour.
+3. **Unknown-brand phones were "other".** A phone from a maker not in the brand list was classified as a non-phone. Phones are now recognised from specs (12/256, 5G, dual SIM, mAh and so on); titles with no signal at all are kept in a "Possible phones" review list.
+4. **Location logic only used a town name.** Exact coordinates, Facebook's location text, and conflicting evidence are now handled. See "Geographic status model".
+5. **Misleading label.** The Advanced option "Only show verified local listings" only asked the actor to hide broad matches; FlipRadar already filters locally. Relabelled.
+6. **Capacity.** The saved list was unbounded and a tie in "last seen" time could evict the newest scan results when trimming. Capped at 800, saved listings and the current scan are protected (found by a new test).
+7. **Lost listings across keywords.** A listing stored under one keyword vanished if only another keyword returned it on the next scan. Fixed and tested.
+
+### Geographic status model (implemented)
+- **Local:** distance from the chosen centre is known (exact coordinates if supplied, otherwise the approximate centre of a recognised Bohol town) and within the radius, and the province matches.
+- **Outside:** known to be farther than the radius, or in another province.
+- **Needs a location check ("verify"):** no usable distance, or evidence conflicts (for example town says Cebu, coordinates say Bohol). **Never counted as nearby.** Shown in a separate list with the reason.
+- Results header reports all three counts. Scan diagnostics report which fields Facebook actually supplied (coordinates, location text, category id, country), so the next scan answers the "does the actor return coordinates?" question at no extra cost.
+- **Not claimed:** that the actor honours the radius. In logged scans most results were Cebu, 73 km away, with radius 40 and 60.
+
+### Remaining limitations (do not treat as solved)
+- Bohol coverage depends on what Facebook returns for a Tagbilaran-centred search. Nearest-first sorting is still untested.
+- The "Possible phones" list can contain non-phones; it is a review list, not results.
+- Classifier cues for Bisaya/Tagalog come from titles seen so far and will miss some.
+- A listing's "NEW" badge means "first received by FlipRadar in the latest scan that completed at least one search". It says nothing about when the seller posted it.
+- localStorage limits: saved list 800 listings, registry 3000 ids. Very long histories lose the oldest ids.
+
+### Approvals needed (no paid run was made)
+1. One normal scan with the new plan, about 6 searches, roughly $0.14 **estimated**. Afterwards tap "View Apify usage" for the real figure and share the log: the report will show coordinate, location-text and category-id availability and how many results are new.
+2. Optional: the "Test location accuracy" probe with nearest-first (about $0.01 estimated) to settle FR-003.
+3. Optional, only after a scan has learned a location id: "Test Marketplace category link" (one run, about $0.01 estimated).
