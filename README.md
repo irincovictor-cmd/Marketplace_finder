@@ -116,3 +116,19 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 
 - **Navigation:** After the user reported that FlipRadar's own Back button still returned to the top, a targeted fix was committed (`b04fc02`) to restore the list immediately before browser history navigation. The fix passed JavaScript syntax validation; actual Android behavior remains unconfirmed.
 - **Sorting:** Current options are estimated profit (default), lowest price, Marketplace listing age (Newest), and approximate nearest. **Newly discovered first is not yet implemented.** The owner wants new listing IDs surfaced before listings seen on prior scans, with a NEW badge and persistent first-seen tracking; this requires a follow-up implementation and tests. No paid scan was performed for this documentation update.
+
+
+## Phase 3 integration notes (Claude patch, October 25)
+
+
+## Phase 3 (October 25, 2026): what changed for users
+- **Find phones of any brand.** The Phones scan no longer depends on iPhone, Samsung and Redmi. Search terms are broad (phone, cellphone, android and others, chosen from what has worked) and the app decides what is a phone from the listing itself. Accessories, repair ads and buying requests are excluded but stay inspectable in the rejected-listings section; unclear titles go to "Possible phones".
+- **Know the cost before scanning.** The Search tab shows the number of paid searches and an estimated cost; a confirmation repeats it. "Most paid searches per scan" is a hard limit in the app. The estimate is not a billing limit.
+- **New discoveries first.** Listings found for the first time by the latest scan are marked NEW and shown first; older ones follow by Marketplace listing age. You can hide listings you have already opened. History survives reloads and is migrated from older saved listings without marking them new.
+- **Honest locations.** Results show only listings with a confirmed location inside your area. Listings with an unclear location are listed separately, never counted as nearby.
+- **Back button.** Opening a listing adds a history entry; both the in-app Back and the Android gesture return to the same card. Filters and sort survive a reload within the same browser tab.
+
+## Developer notes
+- New modules: `plan.js` (scan plans, category URL builder), `seen.js` (discovery registry), `nav.js` (navigation). All are plain scripts that also load in Node.
+- Tests: `npm test` runs every `tests/*.test.js` file (167 tests at time of writing). `tests/harness.js` loads the real `index.html` in a stubbed browser with a mocked Apify, so no network or credits are used. `.github/workflows/test.yml` runs the suite on Node 20 and 22.
+- New localStorage keys: `fr_seen_v1`, `fr_sort`, `fr_hideviewed`, `fr_allbrand`, `fr_brands`, `fr_maxsearches`, `fr_locids`. Existing keys are unchanged and never deleted. Navigation state uses sessionStorage (`fr_nav_v1`).
