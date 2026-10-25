@@ -23,14 +23,13 @@ test("untried terms are explored first, in pool order", () => {
   assert.deepStrictEqual(D.pickDiscoveryTerms({}, POOL, 3), ["phone", "cellphone", "android"]);
 });
 
-test("after a scan, proven performers outrank untried-last but untried still go first", () => {
+test("after a scan the best proven term keeps one slot and the rest explore untried terms", () => {
   let h = D.recordScan({}, D.computeYield([
     { k: "phone", raw: 48, listings: [mk(1, false)] },
     { k: "cellphone", raw: 48, listings: [mk(2, true), mk(3, true), mk(4, true)] },
   ]));
   const picks = D.pickDiscoveryTerms(h, POOL, 3);
-  assert.deepStrictEqual(picks.slice(0, 2), ["android", "128gb"]);   // untried first
-  assert.ok(picks.includes("cellphone") || picks.length === 3);
+  assert.deepStrictEqual(picks, ["cellphone", "android", "128gb"]);  // best proven term keeps a slot, then untried terms explore
   h = D.recordScan(h, D.computeYield([{ k: "android", raw: 1, listings: [] }, { k: "128gb", raw: 1, listings: [] }, { k: "256gb", raw: 1, listings: [] }]));
   const next = D.pickDiscoveryTerms(h, POOL, 1);
   assert.deepStrictEqual(next, ["cellphone"]);                       // best devices per run
@@ -66,4 +65,10 @@ test("summarizeHistory reports devices per run and flags proven-zero terms", () 
   const s = D.summarizeHistory(h);
   assert.strictEqual(s[0].k, "cellphone");
   assert.strictEqual(s.find(r => r.k === "256gb").provenZero, true);
+});
+
+test("one slot explores; two or more slots always protect the proven winner", () => {
+  const h = D.recordScan({}, D.computeYield([{ k: "cellphone", raw: 48, listings: [mk(1, true), mk(2, true)] }]));
+  assert.deepStrictEqual(D.pickDiscoveryTerms(h, POOL, 1), ["phone"], "first untried term in pool order");
+  assert.strictEqual(D.pickDiscoveryTerms(h, POOL, 2)[0], "cellphone");
 });
