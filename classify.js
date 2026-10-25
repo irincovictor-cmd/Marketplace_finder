@@ -28,7 +28,8 @@
     wearable: /\b(smart ?watch|galaxy watch|apple watch|watch \d|band \d|galaxy fit|amazfit|mi band)\b|\bwatch\b/,
     laptop: /\b(laptop|macbook|notebook|thinkpad|vivobook|ideapad|chromebook|legion|nitro)\b/,
     console: /\b(ps5|ps4|ps3|playstation|xbox|nintendo|switch|steam deck|rog ally)\b/,
-    otherKind: /\b(monitors?|refrigerators?|ref|tv|television|washing machine|aircon|air ?conditioner|microwave|soundbar|printer|projector|rice cooker|oven|freezer|electric fan|router|dslr|mirrorless|gopro|cctv|webcam|drone|rtx|gtx|ryzen|motherboard|ssd|nvme|gpu|ddr[2345]|sodimm|dimm)\b/,
+    otherKind: /\b(monitors?|refrigerators?|ref|tv|television|washing machine|aircon|air ?conditioner|microwave|soundbar|printer|projector|rice cooker|oven|freezer|electric fan|router|dslr|mirrorless|gopro|cctv|webcam|drone|rtx|gtx|ryzen|motherboard|ssd|nvme|gpu|ddr[2345]|sodimm|dimm|sandisk|kingston|lexar|transcend|seagate|microsd|flash drive|pen ?drive|hdd|sata|m\.2)\b/,
+    phoneSpec: /\b(?:\d{1,2}\s?[+\/]\s?(?:64|128|256|512)|\d{1,2}\s?gb\s*(?:ram)?\s*[+\/&,|-]?\s*(?:64|128|256|512|1024)\s?gb|\d{1,2}\s?gb\s*ram|ram\s*\d{1,2}\s?gb|5g|4g|lte|dual ?sim|nano ?sim|openline|unlocked|amoled|oled|super retina|fingerprint|face ?id|\d{4,5}\s?mah|snapdragon|dimensity|helio|exynos|bionic|android|rugged phone)\b/,
     phoneWord: /\b(cell ?phones?|smart ?phones?|mobile phones?|android phones?|phones?|cp|unit)\b/,
     model: new RegExp("\\b(?:" + BRANDS + ")(?![a-z])(?:\\s+[a-z]{1,10}){0,3}?[\\s-]*[a-z]?\\d{1,3}[a-z+]{0,4}|\\b(?:iphone|samsung|galaxy|redmi|poco|realme|oppo|vivo|infinix|tecno)[a-z]?\\d{1,3}"),
     iphoneModel: /\b(?:iphone|ip)\s*(?:\d{1,2}|x[rs]?|se|xs max)\b/
@@ -55,7 +56,10 @@
     if (RX.wearable.test(t) && !/\b(phone|iphone)\b/.test(t)) return "wearable";
     if (RX.otherKind.test(t)) return "other";
     if (hasModel(t) || RX.phoneWord.test(t) || new RegExp("\\b(?:" + BRANDS + ")(?![a-z])").test(t)) return "phone";
-    return "other";
+    // Brand-independent: a storage size plus a phone-like spec ("12/256", "5G", "dual sim", "5000mAh") identifies phones from any maker.
+    if (hasStorage(t) && RX.phoneSpec.test(t)) return "phone";
+    // Nothing recognisable at all: keep it reviewable instead of calling it a non-phone.
+    return "unknown";
   }
 
   function classify(title, price) {
@@ -83,6 +87,7 @@
     }
 
     // 4. Non-phone devices are genuine items for sale, just not phones.
+    if (kind === "unknown") return out("review", "Device type not recognised");
     if (kind !== "phone") return out("device", "Not a phone (" + kind + ")");
 
     // 5. Phones: need a model or storage to count as a clearly identified device.
