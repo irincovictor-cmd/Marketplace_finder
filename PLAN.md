@@ -176,3 +176,17 @@ See [ISSUES.md](ISSUES.md) for confirmed bugs, open investigations, fixes, and t
 **Implementation details to settle in code:** Determine what counts as NEW (e.g., discovered since previous successful scan or not previously shown), and how long the badge lasts; do not mark preexisting saved listings as new during migration. Preserve historical IDs even if listings disappear from the latest scan, while bounding localStorage growth. Handle invalid/missing IDs and duplicates, partial scan failures, and scans that return zero results. Add fixture-driven tests for first scan, repeated identical scan, new ID on subsequent scan, same ID across keywords, migration, and reload persistence. Clearly differentiate `firstSeenAt`, `lastSeenAt`, Marketplace listing creation time and viewed status.
 
 **Navigation status:** In-app Back patch `b04fc02` now restores the list immediately rather than awaiting `popstate`. Android regression still pending. All-brand discovery and reliable Bohol location targeting remain higher-priority engineering blockers; coordinate changes with ChatGPT to avoid concurrent edits to `index.html`.
+
+
+## Phase 3 summary and next steps (October 25, 2026, Claude)
+
+**Implemented and tested with mocks:** all-brand phone discovery, bounded and costed scan plans (request count and estimated cost shown and confirmed before any paid search), New discoveries first with persistent first-seen history, viewed tracking, stricter three-way location status, history-based navigation with anchored scroll restoration, safer links, Search tab reorganised as Category, Budget, Area, Scan, Browse. CI runs the suite on every push.
+
+**Android checklist (owner or ChatGPT):**
+1. Hard-refresh so the new script files load (`classify.js`, `discovery.js`, `plan.js`, `nav.js`, `seen.js`).
+2. Open Search. Confirm the order Category, Budget, Area, Scan, Browse and that the line under Scan shows the number of paid searches.
+3. Scroll to the bottom of a long list, open a listing, tap in-app Back: the same card should be in view; repeat with the Android Back gesture; repeat after changing sort and after visiting Facebook and returning.
+4. Run one scan (approval needed). Confirm NEW badges, then scan again and confirm older listings drop below any new ones.
+5. Open Scan diagnostics and share the log export.
+
+**Coordination:** Claude's changes are on branch `phase3-all-brand-discovery` and delivered as patches. ChatGPT reviews and integrates. Do not edit `index.html` in parallel while patches are pending.
