@@ -110,3 +110,9 @@ A mobile-first web app for a gadget reseller in Bohol, Philippines. It finds und
 **Search interface:** Location/distance settings, advanced scan settings and technical diagnostics are collapsed by default (commit f3198014). The app's own listing-detail Back button restores the previous scroll offset (commit 712d8c5); Android system Back and returning from external Facebook links are not yet validated.
 
 **Known limitations:** The default phone keyword list is still iPhone/Samsung/Redmi; optional adaptive terms do not guarantee all-brand coverage. Facebook Marketplace category support in the selected Apify actor has not been confirmed. October 24 user diagnostics showed 144 raw / 57 cleaned / 4 Bohol-recognized in the three-keyword scan, and 1 Bohol-recognized of 24 in a separate location probe. Apify coordinates and strict filtering have not demonstrated reliable Bohol-only discovery. No additional paid probe was run for this update. See ISSUES.md FR-012 through FR-016 and PLAN.md for Claude's prioritized engineering handoff.
+
+
+## October 25, 2026 — subsequent fixes and requested behavior
+
+- **Navigation:** After the user reported that FlipRadar's own Back button still returned to the top, a targeted fix was committed (`b04fc02`) to restore the list immediately before browser history navigation. The fix passed JavaScript syntax validation; actual Android behavior remains unconfirmed.
+- **Sorting:** Current options are estimated profit (default), lowest price, Marketplace listing age (Newest), and approximate nearest. **Newly discovered first is not yet implemented.** The owner wants new listing IDs surfaced before listings seen on prior scans, with a NEW badge and persistent first-seen tracking; this requires a follow-up implementation and tests. No paid scan was performed for this documentation update.
