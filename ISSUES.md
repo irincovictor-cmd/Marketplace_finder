@@ -281,3 +281,17 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 **Oct 24 diagnostic snapshot (user-exported logs):** regular scan 3 keywords (iPhone, Samsung, Redmi), 144 raw, 57 cleaned, 4 Bohol-recognized, 0 failed, ~20 s; separate strict location probe 24 returned, 1 Bohol-recognized, 20 phone-like. These figures do **not** establish Phase 2 nearest-first effectiveness. No paid run was initiated while preparing this handoff.
 
 **User's clarified acceptance criteria:** In Phones, display every plausible phone brand that falls within selected budget and configured area; do not require a brand-name match. Prioritize newest and nearest listings, accurate location evidence, visible unknown-location review, and direct seller links. Do not silently mislabel unknown-location listings as inside radius. Separate search-source coverage from client-side filters. Avoid claiming exhaustive Facebook inventory or reliable actor geofencing without proof.
+
+
+## October 25, 2026 — discovery freshness and navigation follow-up
+
+### FR-017 — Repeat scans do not prioritize newly discovered listings (OPEN — HIGH)
+- **Owner report:** Re-running a scan displays previously seen items alongside new items; the user wants newly discovered devices first.
+- **Code inspection:** Search currently defaults to `S.so="d"` (estimated profit). Other modes are price, listing age (`h`) and approximate distance. None sorts by first discovery or opened/viewed status. `refresh()` replaces results for the scanned keyword and merges/deduplicates current items by ID; it does not maintain a durable first-seen registry across runs. The actor's `creation_time_descend` setting sorts marketplace listings by their creation time, **not** by when FlipRadar first encountered them.
+- **Required behavior:** Persist a first-seen timestamp for stable listing IDs across scans/keywords, preserve it on refresh, mark truly new discoveries clearly, prioritize new discoveries on subsequent scans, then sort older items by listing age. Provide a New first sort and optional Hide viewed control. Do not re-label all refreshed items NEW or silently lose history when a keyword batch is replaced. Design migration for existing `fr_live` and localStorage size limits. No additional Apify runs required for the local tracking logic.
+- **Status:** Not implemented; delegated to Claude for architecture/tests.
+
+### FR-013 — In-app Back scroll restoration follow-up (CODE PATCHED; USER RETEST PENDING)
+- **Owner confirmed:** FlipRadar's **own Back button**, not Android system Back, still reset to the top after the earlier patch.
+- **Latest targeted change:** Commit `b04fc02f9e09c9453583c821456c94cb999d641a` immediately calls `closeDetail()` and restores scroll before updating browser history. Earlier navigation code already included an anchor-based scroll restore and popstate handling. JavaScript syntax validated; no Android verification yet.
+- **Regression requirement:** Open a listing near the bottom of a long Search result list, press in-app Back, confirm the same card remains in view and filter/sort inputs remain unchanged; repeat multiple times, including after changing sort and after an external Facebook visit.
