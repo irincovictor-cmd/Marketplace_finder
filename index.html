@@ -222,7 +222,7 @@ if(!S.d){if(S.t=="search"){$("so").value=S.so;res();renderLogs()}if(S.t=="calc")
 document.addEventListener("click",function(e){var el=e.target.closest("[data-a]");if(!el)return;var a=el.dataset.a,d=el.dataset,i=isNaN(+d.i)?d.i:+d.i;
 if(a=="tab"){S.t=d.t;S.d=0;window.scrollTo(0,0)}
 else if(a=="open"){rememberListScroll();S.d=i;try{history.pushState({flipradarDetail:true},"",location.href);FR_DETAIL_HISTORY=true}catch(err){FR_DETAIL_HISTORY=false}window.scrollTo(0,0)}
-else if(a=="back"){if(FR_DETAIL_HISTORY){history.back();return}closeDetail();return}
+else if(a=="back"){var hadDetailHistory=FR_DETAIL_HISTORY;FR_DETAIL_HISTORY=false;closeDetail();if(hadDetailHistory)history.back();return}
 else if(a=="cat"){S.cat=d.c;S.t="search";S.d=0}
 else if(a=="bo"){S.bo=!S.bo}
 else if(a=="save"){var k=S.sv.indexOf(i);if(k>-1)S.sv.splice(k,1);else S.sv.push(i);sv("fr_saved",S.sv)}
