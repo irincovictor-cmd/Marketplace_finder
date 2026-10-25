@@ -1,0 +1,143 @@
+const test = require("node:test");
+const assert = require("node:assert");
+const S = require("../seen.js");
+
+const L = (id, extra = {}) => Object.assign({ id: "f" + id }, extra);
+const NOW = 1_800_000_000;
+
+// Helper: run one successful scan made of several keyword batches.
+function scan(state, batches, t) {
+  const ctx = S.beginScan(state); let st = state; const newIds = [];
+  for (const batch of batches) { const r = S.register(st, ctx, batch, t); st = r.state; newIds.push(...r.newIds); }
+  return { state: st, newIds };
+}
+
+test("first scan: every listing is a new discovery with first-seen = last-seen", () => {
+  const r = scan(S.create(), [[L(1), L(2), L(3)]], NOW);
+  assert.deepStrictEqual(r.newIds, ["f1", "f2", "f3"]);
+  for (const id of ["f1", "f2", "f3"]) { assert.ok(S.isNew(r.state, id)); assert.strictEqual(S.firstSeen(r.state, id), NOW); }
+  assert.strictEqual(r.state.scans, 1);
+});
+
+test("repeated identical scan: nothing is NEW, first-seen is preserved, last-seen moves forward", () => {
+  const first = scan(S.create(), [[L(1), L(2)]], NOW);
+  const again = scan(first.state, [[L(1), L(2)]], NOW + 600);
+  assert.deepStrictEqual(again.newIds, []);
+  for (const id of ["f1", "f2"]) {
+    assert.ok(!S.isNew(again.state, id), "a refreshed listing must not be labelled NEW");
+    assert.strictEqual(S.firstSeen(again.state, id), NOW);
+    assert.strictEqual(S.lastSeen(again.state, id), NOW + 600);
+  }
+});
+
+test("subsequent scan: only genuinely new ids are NEW; earlier discoveries stop being NEW", () => {
+  const s1 = scan(S.create(), [[L(1), L(2)]], NOW).state;
+  const s2 = scan(s1, [[L(2), L(3), L(4)]], NOW + 3600);
+  assert.deepStrictEqual(s2.newIds, ["f3", "f4"]);
+  assert.ok(S.isNew(s2.state, "f3") && S.isNew(s2.state, "f4"));
+  assert.ok(!S.isNew(s2.state, "f1") && !S.isNew(s2.state, "f2"));
+  assert.strictEqual(S.firstSeen(s2.state, "f3"), NOW + 3600);
+});
+
+test("same id returned by several keywords in one scan is registered once and counts as new once", () => {
+  const r = scan(S.create(), [[L(1), L(2)], [L(2), L(3)], [L(1), L(1), L(3)]], NOW);
+  assert.deepStrictEqual(r.newIds.sort(), ["f1", "f2", "f3"]);
+  assert.strictEqual(Object.keys(r.state.items).length, 3);
+});
+
+test("a listing found in an old scan and again via a different keyword later is not NEW", () => {
+  const s1 = scan(S.create(), [[L(7)]], NOW).state;
+  const s2 = scan(s1, [[L(8)], [L(7)]], NOW + 100);
+  assert.ok(S.isNew(s2.state, "f8") && !S.isNew(s2.state, "f7"));
+});
+
+test("migration: pre-existing listings are known but never NEW, and migrating twice changes nothing", () => {
+  const old = [L(1), L(2), L(3)];
+  const m = S.migrate(null, old, NOW);
+  assert.strictEqual(m.migratedAt, NOW);
+  for (const l of old) { assert.ok(!S.isNew(m, l.id)); assert.strictEqual(S.firstSeen(m, l.id), NOW); }
+  const again = S.migrate(m, [L(9)], NOW + 5);
+  assert.deepStrictEqual(again, m, "idempotent: later listings are not retro-migrated");
+  const s2 = scan(m, [[L(1), L(4)]], NOW + 60);
+  assert.deepStrictEqual(s2.newIds, ["f4"], "a migrated id found again stays old; a really new one is NEW");
+});
+
+test("reload persistence: the registry survives a JSON round trip with first-seen times intact", () => {
+  const s = scan(S.create(), [[L(1), L(2)]], NOW).state;
+  const reloaded = S.revive(JSON.parse(JSON.stringify(s)));
+  assert.deepStrictEqual(reloaded, s);
+  assert.strictEqual(S.firstSeen(reloaded, "f1"), NOW);
+  assert.ok(S.isNew(reloaded, "f2"), "NEW survives a browser restart until the next scan");
+});
+
+test("damaged or foreign stored values become an empty registry instead of throwing", () => {
+  for (const bad of [null, undefined, "x", 5, [], {}, { v: 9, scans: 0, items: {} }, { v: 1, scans: "a", items: {} }, { v: 1, scans: 0, items: null }])
+    assert.deepStrictEqual(S.revive(bad), S.create(), JSON.stringify(bad));
+});
+
+test("a scan where every search failed commits nothing, so existing NEW badges stay", () => {
+  const s1 = scan(S.create(), [[L(1)]], NOW).state;
+  const ctx = S.beginScan(s1);           // scan started ...
+  // ... no search succeeded, so register()/commitScan() are never called
+  assert.strictEqual(s1.scans, 1);
+  assert.ok(S.isNew(s1, "f1"));
+  assert.strictEqual(ctx.committed, false);
+});
+
+test("partial failure: results from the searches that succeeded are registered once under one scan number", () => {
+  const s1 = scan(S.create(), [[L(1)]], NOW).state;
+  const ctx = S.beginScan(s1);
+  const r = S.register(s1, ctx, [L(2), L(3)], NOW + 10);   // keyword A succeeded; keyword B failed (never registered)
+  assert.strictEqual(r.state.scans, 2);
+  assert.ok(S.isNew(r.state, "f2") && S.isNew(r.state, "f3") && !S.isNew(r.state, "f1"));
+});
+
+test("a successful scan with zero results still counts: old discoveries are no longer NEW afterwards", () => {
+  const s1 = scan(S.create(), [[L(1)]], NOW).state;
+  const ctx = S.beginScan(s1);
+  const s2 = S.commitScan(s1, ctx);
+  assert.strictEqual(s2.scans, 2);
+  assert.ok(!S.isNew(s2, "f1"));
+  assert.strictEqual(S.commitScan(s2, ctx), s2, "committing twice is a no-op");
+});
+
+test("invalid ids are ignored and never crash", () => {
+  const r = scan(S.create(), [[{ id: null }, { id: undefined }, { id: "" }, { id: "  " }, { id: "undefined" }, null, {}, L(1)]], NOW);
+  assert.deepStrictEqual(r.newIds, ["f1"]);
+});
+
+test("viewed tracking is separate from NEW and from first-seen", () => {
+  let s = scan(S.create(), [[L(1)]], NOW).state;
+  assert.ok(!S.isViewed(s, "f1"));
+  s = S.markViewed(s, "f1", NOW + 50);
+  assert.ok(S.isViewed(s, "f1") && S.isNew(s, "f1"));
+  assert.strictEqual(S.firstSeen(s, "f1"), NOW);
+  assert.strictEqual(S.markViewed(s, "f1", NOW + 99).items.f1.v, NOW + 50, "first view time is kept");
+  assert.strictEqual(S.markViewed(s, "", NOW), s);
+});
+
+test("storage stays bounded: oldest-seen ids go first and displayed ids are protected", () => {
+  let s = S.create();
+  for (let i = 0; i < 20; i++) s = scan(s, [[L(i)]], NOW + i).state;
+  const p = S.prune(s, new Set(["f0", "f1"]), 10);
+  assert.strictEqual(Object.keys(p.items).length, 10);
+  assert.ok(p.items.f0 && p.items.f1, "protected ids survive although they are the oldest");
+  assert.ok(p.items.f19 && !p.items.f2, "least recently seen unprotected ids are dropped");
+  assert.strictEqual(Object.keys(s.items).length, 20, "input is not mutated");
+  assert.ok(JSON.stringify(p).length < 2000);
+});
+
+test("sort: NEW first by listing age, then older discoveries by Marketplace listing age (not by first-seen)", () => {
+  let s = scan(S.create(), [[L(1), L(2), L(3)]], NOW).state;          // 1,2,3 first seen in scan 1
+  s = scan(s, [[L(4), L(5)]], NOW + 999).state;                        // 4,5 are NEW in scan 2
+  const age = { f1: 50, f2: 5, f3: 20, f4: 30, f5: 2 };
+  const list = ["f1", "f2", "f3", "f4", "f5"].map(id => ({ id }));
+  const sorted = list.slice().sort(S.compareNewFirst(s, l => age[l.id])).map(l => l.id);
+  assert.deepStrictEqual(sorted, ["f5", "f4", "f2", "f3", "f1"]);
+});
+
+test("sort is deterministic for equal ages", () => {
+  const s = scan(S.create(), [[L(2), L(1)]], NOW).state;
+  const out = [L(2), L(1)].sort(S.compareNewFirst(s, () => 3)).map(l => l.id);
+  assert.deepStrictEqual(out, ["f1", "f2"]);
+});
