@@ -209,15 +209,20 @@ function vSaved(){var r=L.concat(S.live).filter(function(l){return S.sv.indexOf(
 function vCalc(){return '<h1>Profit calculator</h1><label>Buying price (₱)</label><input id="cb" type="number" inputmode="numeric" value="'+S.cb+'"><label>Estimated selling price (₱)</label><input id="cs" type="number" inputmode="numeric" value="'+S.cs+'"><label>Additional costs (₱): cleaning, repairs, shipping</label><input id="cc" type="number" inputmode="numeric" value="'+S.cc+'"><div class="chips" style="margin-top:8px"><button class="chip" data-a="add" data-v="500">+ ₱500</button><button class="chip" data-a="add" data-v="1000">+ ₱1,000</button><button class="chip" data-a="add" data-v="2000">+ ₱2,000</button></div><div class="c" id="out" style="margin-top:12px"></div>'}
 function co(){var b=parseFloat(S.cb)||0,s=parseFloat(S.cs)||0,c=parseFloat(S.cc)||0,p=s-b-c,r=b>0?p/b*100:0;
 $("out").innerHTML='<div class="mu">Estimated profit</div><div class="big '+(p>=0?'up':'dn')+'">'+SP(p)+'</div><div class="mu">ROI '+Math.round(r)+'% of buying price</div>'}
-var FR_SCROLL={};function rememberListScroll(){if(!S.d)FR_SCROLL[S.t]=window.scrollY||document.documentElement.scrollTop||0}function restoreListScroll(){var y=FR_SCROLL[S.t]||0;requestAnimationFrame(function(){requestAnimationFrame(function(){window.scrollTo(0,y)})})}
+var FR_SCROLL={},FR_DETAIL_HISTORY=false;
+function rememberListScroll(){if(S.d)return;var y=window.scrollY||document.documentElement.scrollTop||0;var cards=document.querySelectorAll('#res [data-a="open"],#app [data-a="open"]'),anchor=null;for(var j=0;j<cards.length;j++){var rect=cards[j].getBoundingClientRect();if(rect.bottom>0){anchor={id:cards[j].dataset.i,offset:rect.top};break}}FR_SCROLL[S.t]={y:y,anchor:anchor}}
+function restoreListScroll(){var saved=FR_SCROLL[S.t];if(!saved)return;var attempt=0;function restore(){var target=saved.y;if(saved.anchor){var cards=document.querySelectorAll('#app [data-a="open"]');for(var j=0;j<cards.length;j++){if(cards[j].dataset.i===saved.anchor.id){target=window.scrollY+cards[j].getBoundingClientRect().top-saved.anchor.offset;break}}}window.scrollTo(0,Math.max(0,target));if(++attempt<3)requestAnimationFrame(restore)}requestAnimationFrame(function(){requestAnimationFrame(restore)})}
+function closeDetail(){if(!S.d)return;S.d=0;R();restoreListScroll()}
+window.addEventListener("popstate",function(){if(S.d){FR_DETAIL_HISTORY=false;closeDetail()}});
+window.addEventListener("pageshow",function(e){if(e.persisted&&!S.d&&FR_SCROLL[S.t])restoreListScroll()});
 function R(){var v=S.d?vDet(F(S.d)):{home:vHome,search:vSearch,watch:vWatch,saved:vSaved,calc:vCalc}[S.t]();
 $("app").innerHTML=v;
 document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.t==S.t&&!S.d)});
 if(!S.d){if(S.t=="search"){$("so").value=S.so;res();renderLogs()}if(S.t=="calc")co()}}
 document.addEventListener("click",function(e){var el=e.target.closest("[data-a]");if(!el)return;var a=el.dataset.a,d=el.dataset,i=isNaN(+d.i)?d.i:+d.i;
 if(a=="tab"){S.t=d.t;S.d=0;window.scrollTo(0,0)}
-else if(a=="open"){rememberListScroll();S.d=i;window.scrollTo(0,0)}
-else if(a=="back"){S.d=0;R();restoreListScroll();return}
+else if(a=="open"){rememberListScroll();S.d=i;try{history.pushState({flipradarDetail:true},"",location.href);FR_DETAIL_HISTORY=true}catch(err){FR_DETAIL_HISTORY=false}window.scrollTo(0,0)}
+else if(a=="back"){if(FR_DETAIL_HISTORY){history.back();return}closeDetail();return}
 else if(a=="cat"){S.cat=d.c;S.t="search";S.d=0}
 else if(a=="bo"){S.bo=!S.bo}
 else if(a=="save"){var k=S.sv.indexOf(i);if(k>-1)S.sv.splice(k,1);else S.sv.push(i);sv("fr_saved",S.sv)}
