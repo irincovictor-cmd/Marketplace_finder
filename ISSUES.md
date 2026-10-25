@@ -346,3 +346,25 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 1. One normal scan with the new plan, about 6 searches, roughly $0.14 **estimated**. Afterwards tap "View Apify usage" for the real figure and share the log: the report will show coordinate, location-text and category-id availability and how many results are new.
 2. Optional: the "Test location accuracy" probe with nearest-first (about $0.01 estimated) to settle FR-003.
 3. Optional, only after a scan has learned a location id: "Test Marketplace category link" (one run, about $0.01 estimated).
+
+
+## October 26, 2026 — Phase 3 Android field feedback (open)
+
+### FR-018 — Reposts and price-change clones appear as separate results (OPEN)
+- Screenshot shows near-identical `Cellphone+` posts in Batuan with the same thumbnail, at ₱1,800 and ₱2,000. Owner also reports sellers reposting or lowering prices.
+- Existing exact listing-ID deduplication is insufficient for different IDs representing the same device. Do **not** assume identical generic titles mean identical devices.
+- Group high-confidence same-seller/same-device reposts using available seller identity, image fingerprints, model/storage, location, title similarity, and timestamps; gracefully degrade when fields are missing. Show the most recently posted/updated confirmed listing, not automatically the cheapest. Label `Possible duplicate posts (N)` with expandable alternatives and price history when verifiable. Avoid merging unrelated devices or suppressing listings without confidence.
+
+### FR-019 — Opening a result makes it disappear from New discoveries (OPEN)
+- Owner confirms scroll now returns near prior position, but clicked listing disappears from the currently selected `New discoveries` list.
+- Desired: opening marks listing `SEEN` without removing it from the current result set or reflowing the current list; on a subsequent scan, previously seen listings should be ranked after genuinely unseen discoveries when `New discoveries` is selected. Keep separate first-seen, viewed, scan-batch, and listing-created metadata. Persist seen state across reloads; maintain stable card position during detail-to-list navigation. Explicit `Hide seen` may be offered, default OFF.
+
+### FR-020 — Listing card density and low-confidence warnings (OPEN / UX)
+- Android screenshot: generic `Cellphone+` cards consume considerable vertical space with repeated `Unclear listing`, `No reliable model-specific price estimate yet`, and `Insufficient comps` text. Owner prioritizes scanning within budget over profit estimation. Condense warnings into short expandable details, preserve title/price/location/thumbnail and visible uncertainty, and de-emphasize profit predictions.
+
+### FR-021 — Latest exported scan diagnostics and geographic reliability (PARTIAL)
+- Export `flipradar-logs-2026-10-25.json` (latest scan 2026-10-25 16:11:32 UTC): six keyword requests succeeded, zero failed, 33 s; 288 raw, 272 cleaned, 236 unique IDs, 36 duplicate IDs, 188 first-seen discoveries reported.
+- Latest report geo: 169 Bohol-town matches, 45 other-province, 13 ambiguous, 9 unknown; no per-listing GPS, country, or locationText fields in 236 unique results. Requested 40 km; report says 155 within, 7 beyond, 74 without distance. UI funnel: 344 loaded → 254 within budget → 185 Phones → 174 device candidates → 96 province → 85 radius. These counts refer to different stages and must not be conflated.
+- `Needs location verification (20)` screenshot includes ambiguous Talisay, Cortes, Maria and Getafe entries. Some are Bohol municipality names but also exist elsewhere; keep unverified unless province corroborated. Avoid blanket auto-classification.
+- Actor request used `distance_ascend`, `strictFiltering:false`. Cost `$0.1443` is an **estimate**, not billed amount; historical `apify_usage` was a separate older lookup. Do not claim zero-cost scans.
+- Historical errors in 100-event export: 2026-10-23 `Failed to fetch` category test and `Could not reach Apify` keyword request. **No errors recorded in latest scan.** Older category URL experiment returned California results, not validated as supported geographic category filtering.
