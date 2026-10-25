@@ -1,0 +1,350 @@
+From 080530f3b37b398b7344070dcd451fb2fb1b5dbc Mon Sep 17 00:00:00 2001
+From: FlipRadar-dev-Claude <dev@example.invalid>
+Date: Sun, 25 Oct 2026 15:51:16 +0000
+Subject: [PATCH 4/7] Add history-based navigation with anchored scroll
+ restoration (nav.js)
+
+---
+ nav.js            | 127 ++++++++++++++++++++++++++++++
+ tests/nav.test.js | 195 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 322 insertions(+)
+ create mode 100644 nav.js
+ create mode 100644 tests/nav.test.js
+
+diff --git a/nav.js b/nav.js
+new file mode 100644
+index 0000000..2601833
+--- /dev/null
++++ b/nav.js
+@@ -0,0 +1,127 @@
++/* FlipRadar navigation: history entries for listing details, scroll anchoring, state that survives tab discards.
++ * Dependencies are injected so the logic is testable without a browser.
++ * Browser: window.FRNav. Node: require("./nav.js").
++ *
++ * Model
++ *  - Opening a listing pushes ONE history entry (#/l/<id>), so the Android system Back gesture returns to the list.
++ *  - Before opening, the list position is captured as an ANCHOR (first visible card id + its offset) plus raw scrollY.
++ *  - The snapshot (tab, filters, sort, anchor) is kept in sessionStorage. It survives reloads and tab discards
++ *    (for example after returning from the Facebook app) and disappears when the tab session ends.
++ *  - Re-rendering the list keeps the anchor card at the same screen offset.
++ */
++(function (root, factory) {
++  if (typeof module === "object" && module.exports) module.exports = factory();
++  else root.FRNav = factory();
++})(typeof self !== "undefined" ? self : this, function () {
++  var KEY = "fr_nav_v1", TTL_MS = 6 * 3600 * 1000, VERSION = 1;
++
++  function parseHash(h) {
++    var m = /^#\/l\/([^/?#]+)$/.exec(String(h || ""));
++    if (!m) return null;
++    try { return decodeURIComponent(m[1]); } catch (e) { return null; }
++  }
++
++  function createNav(env) {
++    var win = env.window, doc = env.document, hist = env.history, store = env.storage;
++    var now = env.now || Date.now, raf = env.raf || function (f) { f(); };
++    var timer = env.setTimeout || setTimeout, clear = env.clearTimeout || clearTimeout;
++    var snap = null, pending = null, debounceId = null, skipPops = 0;
++
++    function scrollY() { return win.scrollY || (doc.documentElement && doc.documentElement.scrollTop) || 0; }
++    function cards() { return Array.prototype.slice.call(doc.querySelectorAll('[data-a="open"]')); }
++    function findCard(id) { var all = cards(); for (var i = 0; i < all.length; i++) if (String(all[i].dataset.i) === String(id)) return all[i]; return null; }
++    function visibleAnchor() {
++      var all = cards();
++      for (var i = 0; i < all.length; i++) { var r = all[i].getBoundingClientRect(); if (r.bottom > 0) return { id: all[i].dataset.i, offset: r.top }; }
++      return null;
++    }
++
++    function capture(app) {
++      var a = visibleAnchor();
++      return { v: VERSION, t: app.t, d: app.d || 0, q: app.q || "", max: app.max || "", cat: app.cat || "", so: app.so || "",
++               y: Math.round(scrollY()), a: a ? String(a.id) : null, o: a ? Math.round(a.offset) : 0, ts: now() };
++    }
++    function persist(s) { snap = s; try { store.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode or quota: keep in memory only */ } return s; }
++    function load() {
++      try {
++        var s = JSON.parse(store.getItem(KEY));
++        if (!s || s.v !== VERSION || typeof s.ts !== "number" || now() - s.ts > TTL_MS) return null;
++        return s;
++      } catch (e) { return null; }
++    }
++    function current() { return snap || load(); }
++
++    // Put the anchor card back at its remembered screen offset; fall back to the raw scroll position.
++    // Thumbnails and banners can change card heights after the first paint, so the alignment is repeated for a few frames.
++    function restoreScroll(s) {
++      if (!s) return "none";
++      var attempt = 0;
++      function pass() {
++        var el = s.a ? findCard(s.a) : null;
++        if (el) win.scrollTo(0, Math.max(0, scrollY() + el.getBoundingClientRect().top - (s.o || 0)));
++        else win.scrollTo(0, s.y || 0);
++        if (++attempt < 3) raf(pass);
++      }
++      raf(function () { raf(pass); });
++      return "scheduled";
++    }
++
++    // Run a re-render and keep the card the user was looking at in the same place.
++    function keepAnchor(fn) {
++      var a = visibleAnchor();
++      fn();
++      if (!a) return;
++      var el = findCard(a.id);
++      if (el) { var delta = el.getBoundingClientRect().top - a.offset; if (Math.abs(delta) > 1) win.scrollTo(0, Math.max(0, scrollY() + delta)); }
++    }
++
++    function openDetail(app, id) {
++      persist(capture(app));
++      try { hist.pushState({ fr: 1, v: "detail", id: String(id) }, "", "#/l/" + encodeURIComponent(String(id))); } catch (e) { /* file:// or sandbox */ }
++    }
++    function hasDetailEntry() { return !!(hist.state && hist.state.v === "detail"); }
++    // The caller renders the list immediately, then pops the history entry quietly: the resulting popstate is ignored once.
++    function skipNextPop() { skipPops++; }
++    function back() { if (hasDetailEntry()) { hist.back(); return true; } return false; }
++    function leaveDetail() {
++      if (hist.state && hist.state.v === "detail") { try { hist.replaceState({ fr: 1, v: "list" }, "", win.location.pathname + (win.location.search || "")); } catch (e) {} }
++    }
++
++    function onPop(cb) {
++      win.addEventListener("popstate", function (e) {
++        if (skipPops > 0) { skipPops--; return; }
++        var st = e.state || {};
++        var id = st.v === "detail" ? st.id : parseHash(win.location.hash);
++        cb({ detailId: id || null, snapshot: current() });
++      });
++    }
++
++    function trackScroll(getApp) {
++      function save() { var app = getApp(); if (!app.d) persist(capture(app)); }
++      win.addEventListener("scroll", function () { clear(debounceId); debounceId = timer(save, 150); }, { passive: true });
++      win.addEventListener("pagehide", save);
++      doc.addEventListener("visibilitychange", function () { if (doc.hidden) save(); else restoreIfReset(getApp); });
++      win.addEventListener("pageshow", function (e) { if (e && e.persisted) restoreIfReset(getApp); });
++    }
++    // Returning from another app can leave the page at the top; restore only if that clearly happened.
++    function restoreIfReset(getApp) {
++      var app = getApp ? getApp() : { d: 0 }, s = current();
++      if (app.d || !s || s.d || scrollY() > 10 || (s.y || 0) < 200 || s.t !== app.t) return false;
++      restoreScroll(s); return true;
++    }
++
++    // Boot: returns the snapshot to apply (or null) and the listing id from the URL hash, if any.
++    function boot() {
++      var s = load(), id = parseHash(win.location.hash);
++      if (s) snap = s;
++      pending = s && !id ? s : (s && id ? s : null);
++      return { snapshot: s, detailId: id };
++    }
++    function takePendingRestore() { var p = pending; pending = null; return p; }
++
++    return { capture: capture, persist: persist, load: load, current: current, restoreScroll: restoreScroll, keepAnchor: keepAnchor,
++             openDetail: openDetail, back: back, hasDetailEntry: hasDetailEntry, skipNextPop: skipNextPop, leaveDetail: leaveDetail, onPop: onPop, trackScroll: trackScroll,
++             restoreIfReset: restoreIfReset, boot: boot, takePendingRestore: takePendingRestore, KEY: KEY };
++  }
++  return { createNav: createNav, parseHash: parseHash, KEY: KEY, TTL_MS: TTL_MS };
++});
+diff --git a/tests/nav.test.js b/tests/nav.test.js
+new file mode 100644
+index 0000000..f82350a
+--- /dev/null
++++ b/tests/nav.test.js
+@@ -0,0 +1,195 @@
++const test = require("node:test");
++const assert = require("node:assert");
++const { createNav, parseHash, KEY, TTL_MS } = require("../nav.js");
++
++// A tiny fake browser: a scrollable list of equally tall cards, a history stack, and sessionStorage.
++function fakeEnv(opts = {}) {
++  const CARD_H = 100, N = opts.cards || 60;
++  const listeners = { win: {}, doc: {} };
++  const store = {};
++  let t = 1_000_000;
++  const env = {
++    y: 0, ids: Array.from({ length: N }, (_, i) => "f" + i), headerOffset: 0,
++    entries: [{ state: null, hash: "" }], idx: 0,
++    store, clock: () => t, advance: ms => { t += ms; },
++  };
++  const win = {
++    get scrollY() { return env.y; },
++    scrollTo: (_x, y) => { env.y = Math.max(0, y); },
++    location: { get hash() { return env.entries[env.idx].hash; }, pathname: "/Marketplace_finder/", search: "" },
++    addEventListener: (n, f) => { (listeners.win[n] = listeners.win[n] || []).push(f); },
++  };
++  const doc = {
++    hidden: false, documentElement: { scrollTop: 0 },
++    querySelectorAll: () => env.ids.map((id, i) => ({
++      dataset: { i: id, a: "open" },
++      getBoundingClientRect: () => ({ top: env.headerOffset + i * CARD_H - env.y, bottom: env.headerOffset + (i + 1) * CARD_H - env.y }),
++    })),
++    addEventListener: (n, f) => { (listeners.doc[n] = listeners.doc[n] || []).push(f); },
++  };
++  const history = {
++    get state() { return env.entries[env.idx].state; },
++    pushState: (st, _t, url) => { env.entries.splice(env.idx + 1); env.entries.push({ state: st, hash: url.startsWith("#") ? url : "" }); env.idx++; },
++    replaceState: (st, _t, url) => { env.entries[env.idx] = { state: st, hash: (url || "").startsWith("#") ? url : "" }; },
++    back: () => { if (env.idx > 0) { env.idx--; (listeners.win.popstate || []).forEach(f => f({ state: env.entries[env.idx].state })); } },
++  };
++  const storage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
++  env.nav = createNav({ window: win, document: doc, history, storage, now: env.clock, raf: f => f(), setTimeout: f => { f(); return 0; }, clearTimeout() {} });
++  env.fire = (target, name, ev = {}) => (listeners[target][name] || []).forEach(f => f(ev));
++  env.app = Object.assign({ t: "search", d: 0, q: "", max: "20000", cat: "Phones", so: "rn" }, opts.app || {});
++  return env;
++}
++const topCardId = env => { for (const [i, id] of env.ids.entries()) if (i * 100 - env.y + 100 > 0) return id; };
++
++test("parseHash accepts only #/l/<id>", () => {
++  assert.strictEqual(parseHash("#/l/f123"), "f123");
++  assert.strictEqual(parseHash("#/l/a%20b"), "a b");
++  for (const bad of ["", "#", "#/x/1", "#/l/", "#/l/a/b", "#/l/%E0%A4%A", null, undefined]) assert.strictEqual(parseHash(bad), null, String(bad));
++});
++
++test("opening a listing pushes one history entry and stores the list position as an anchor", () => {
++  const e = fakeEnv(); e.y = 2345;
++  e.nav.openDetail(e.app, "f23");
++  assert.strictEqual(e.entries.length, 2);
++  assert.deepStrictEqual(e.entries[1].state, { fr: 1, v: "detail", id: "f23" });
++  assert.strictEqual(e.entries[1].hash, "#/l/f23");
++  const s = JSON.parse(e.store[KEY]);
++  assert.deepStrictEqual([s.t, s.cat, s.max, s.so, s.a, s.o, s.y], ["search", "Phones", "20000", "rn", "f23", -45, 2345]);
++});
++
++test("Android system Back (popstate) and the in-app Back button both return to the same anchored position", () => {
++  const e = fakeEnv(); e.y = 2345;
++  let popped = null;
++  e.nav.onPop(p => { popped = p; if (!p.detailId) { e.y = 0; e.nav.restoreScroll(p.snapshot); } });
++  e.nav.openDetail(e.app, "f23"); e.y = 0;                      // detail screen scrolls to top
++  e.fire("win", "popstate", { state: e.entries[e.idx].state });  // system Back gesture arrives as popstate (simulated at the detail entry first)
++  assert.strictEqual(popped.detailId, "f23");
++  assert.strictEqual(e.nav.back(), true, "in-app Back uses history.back()");
++  assert.strictEqual(popped.detailId, null);
++  assert.strictEqual(e.y, 2345, "list returns to the same place");
++  assert.strictEqual(e.idx, 0);
++});
++
++test("anchor restore survives a changed list: header height and new cards above do not break the position", () => {
++  const e = fakeEnv(); e.y = 1800;
++  e.nav.openDetail(e.app, "f18");
++  const saved = e.nav.current();
++  e.headerOffset = 130;                         // e.g. a results banner appeared above the list
++  e.ids.unshift("n1", "n2");                    // two new listings arrived at the top
++  e.y = 0; e.nav.restoreScroll(saved);
++  const target = e.ids.indexOf(saved.a);
++  assert.strictEqual(Math.round(e.headerOffset + target * 100 - e.y), saved.o, "same card at the same screen offset");
++});
++
++test("restore falls back to raw scrollY when the anchor card no longer exists", () => {
++  const e = fakeEnv(); e.y = 900;
++  e.nav.openDetail(e.app, "f9");
++  e.ids = e.ids.filter(id => id !== "f9"); e.y = 0;
++  e.nav.restoreScroll(e.nav.current());
++  assert.strictEqual(e.y, 900);
++});
++
++test("a re-render (for example scan progress) keeps the visible card in place", () => {
++  const e = fakeEnv(); e.y = 3000;
++  const before = topCardId(e);
++  e.nav.keepAnchor(() => { e.ids.unshift("new1", "new2", "new3"); e.headerOffset = 60; });
++  assert.strictEqual(topCardId(e), before, "same card is still at the top");
++});
++
++test("filters and sort survive a discarded tab: state is read back from sessionStorage after reload", () => {
++  const e = fakeEnv({ app: { q: "poco", max: "15000", so: "near" } }); e.y = 1200;
++  e.nav.openDetail(e.app, "f12");
++  const e2 = fakeEnv(); e2.store[KEY] = e.store[KEY];        // new page load, same tab session
++  e2.entries[0].hash = "#/l/f12";
++  const b = e2.nav.boot();
++  assert.deepStrictEqual([b.snapshot.q, b.snapshot.max, b.snapshot.so, b.snapshot.cat, b.detailId], ["poco", "15000", "near", "Phones", "f12"]);
++});
++
++test("stale or corrupt snapshots are ignored", () => {
++  const e = fakeEnv(); e.y = 500; e.nav.openDetail(e.app, "f5");
++  e.advance(TTL_MS + 1);
++  assert.strictEqual(e.nav.load(), null, "older than six hours");
++  e.store[KEY] = "{not json"; assert.strictEqual(e.nav.load(), null);
++  e.store[KEY] = JSON.stringify({ v: 99, ts: e.clock() }); assert.strictEqual(e.nav.load(), null);
++});
++
++test("returning from the Facebook app: scroll is restored only when the page was reset to the top", () => {
++  const e = fakeEnv(); e.y = 2200;
++  e.nav.trackScroll(() => e.app);
++  e.fire("win", "scroll");                                      // debounced save while browsing
++  e.doc = null; e.y = 0;                                         // browser lost the position while the page was hidden
++  e.fire("doc", "visibilitychange");                             // becomes visible again
++  assert.strictEqual(e.y, 2200);
++  e.y = 640; e.fire("doc", "visibilitychange");                  // user is somewhere else: leave alone
++  assert.strictEqual(e.y, 640);
++});
++
++test("restoreIfReset never fires inside a detail view or on a different tab", () => {
++  const e = fakeEnv(); e.y = 2000; e.nav.trackScroll(() => e.app); e.fire("win", "scroll");
++  e.y = 0;
++  assert.strictEqual(e.nav.restoreIfReset(() => Object.assign({}, e.app, { d: "f1" })), false);
++  assert.strictEqual(e.nav.restoreIfReset(() => Object.assign({}, e.app, { t: "saved" })), false);
++  assert.strictEqual(e.y, 0);
++});
++
++test("bfcache pageshow restores only when persisted", () => {
++  const e = fakeEnv(); e.y = 1500; e.nav.trackScroll(() => e.app); e.fire("win", "scroll"); e.y = 0;
++  e.fire("win", "pageshow", { persisted: false }); assert.strictEqual(e.y, 0);
++  e.fire("win", "pageshow", { persisted: true });  assert.strictEqual(e.y, 1500);
++});
++
++test("leaving the detail view through a tab replaces the history entry so Back does not resurrect it", () => {
++  const e = fakeEnv(); e.nav.openDetail(e.app, "f3");
++  assert.strictEqual(e.entries[e.idx].state.v, "detail");
++  e.nav.leaveDetail();
++  assert.strictEqual(e.entries[e.idx].state.v, "list");
++  assert.strictEqual(e.nav.back(), false, "nothing to go back to inside the app");
++});
++
++test("in-app Back with no pushed entry (for example a deep link) returns false so the caller handles it", () => {
++  const e = fakeEnv(); assert.strictEqual(e.nav.back(), false);
++});
++
++test("storage failures never throw", () => {
++  const e = fakeEnv();
++  const bad = createNav({ window: { scrollY: 10, scrollTo() {}, location: { hash: "", pathname: "/", search: "" }, addEventListener() {} },
++    document: { hidden: false, documentElement: {}, querySelectorAll: () => [], addEventListener() {} },
++    history: { state: null, pushState() { throw new Error("blocked"); }, replaceState() {}, back() {} },
++    storage: { getItem() { throw new Error("denied"); }, setItem() { throw new Error("quota"); } }, now: () => 1 });
++  assert.doesNotThrow(() => bad.openDetail({ t: "search" }, "x"));
++  assert.strictEqual(bad.load(), null);
++});
++
++test("in-app Back: list is rendered immediately, the history pop is ignored once, and system Back still works afterwards", () => {
++  const e = fakeEnv(); e.y = 2345;
++  const events = [];
++  e.nav.onPop(p => events.push(p.detailId || "list"));
++  e.nav.openDetail(e.app, "f23"); e.y = 0;
++  // --- what the app does on the Back button ---
++  assert.strictEqual(e.nav.hasDetailEntry(), true);
++  e.y = 0; e.nav.restoreScroll(e.nav.current());               // immediate render + restore (no waiting for popstate)
++  assert.strictEqual(e.y, 2345, "position is back before any popstate arrives");
++  e.nav.skipNextPop(); e.nav.back();
++  assert.deepStrictEqual(events, [], "the quiet history pop does not trigger a second render");
++  assert.strictEqual(e.idx, 0);
++  // --- later: open again and use the system Back gesture ---
++  e.nav.openDetail(e.app, "f24");
++  e.idx = 0;                                                    // the browser moves history first ...
++  e.fire("win", "popstate", { state: e.entries[0].state });     // ... then fires popstate (Android system Back)
++  assert.deepStrictEqual(events, ["list"], "skip counter was consumed; system Back is handled normally");
++});
++
++test("scroll restore is repeated for several frames so late layout shifts (images) do not leave the list off position", () => {
++  const e = fakeEnv(); e.y = 1800; e.nav.openDetail(e.app, "f18");
++  const frames = []; let shifted = false;
++  const nav2 = (function () {                                     // same env but queued frames
++    const { createNav } = require("../nav.js");
++    return createNav({ window: { get scrollY() { return e.y; }, scrollTo: (_x, y) => { e.y = y; }, location: { hash: "", pathname: "/", search: "" }, addEventListener() {} },
++      document: { hidden: false, documentElement: {}, addEventListener() {}, querySelectorAll: () => e.ids.map((id, i) => ({ dataset: { i: id }, getBoundingClientRect: () => ({ top: (shifted ? 160 : 0) + i * 100 - e.y, bottom: (shifted ? 160 : 0) + (i + 1) * 100 - e.y }) })) },
++      history: { state: null, pushState() {}, replaceState() {}, back() {} }, storage: { getItem: () => JSON.stringify(e.nav.current()), setItem() {} }, now: e.clock, raf: f => frames.push(f) });
++  })();
++  e.y = 0; nav2.restoreScroll(e.nav.current());
++  while (frames.length) { const f = frames.shift(); f(); if (!shifted && frames.length) shifted = true; }   // a banner appears after the first pass
++  const saved = e.nav.current();
++  assert.strictEqual(Math.round(160 + e.ids.indexOf(saved.a) * 100 - e.y), saved.o, "final pass corrected the shift");
++});
+-- 
+2.43.0
+

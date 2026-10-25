@@ -1,0 +1,240 @@
+From d7553598625d05c006f1db10007e66ca80044c05 Mon Sep 17 00:00:00 2001
+From: FlipRadar-dev-Claude <dev@example.invalid>
+Date: Sun, 25 Oct 2026 15:51:16 +0000
+Subject: [PATCH 2/7] Add bounded, costed scan plans (plan.js); keep a slot for
+ the best proven search term
+
+---
+ discovery.js            |  7 +++-
+ plan.js                 | 82 +++++++++++++++++++++++++++++++++++++++++
+ tests/discovery.test.js | 11 ++++--
+ tests/plan.test.js      | 72 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 168 insertions(+), 4 deletions(-)
+ create mode 100644 plan.js
+ create mode 100644 tests/plan.test.js
+
+diff --git a/discovery.js b/discovery.js
+index e031867..5a7ae7f 100644
+--- a/discovery.js
++++ b/discovery.js
+@@ -45,7 +45,7 @@
+ 
+   function provenZero(e) { return e && e.runs >= PROVEN_ZERO_RUNS && e.deviceLocalUnique === 0; }
+ 
+-  /* Untried terms first (exploration), then best devices-per-run; proven-zero terms rest for a few scans. */
++  /* One slot for the best proven term, then untried terms (exploration), then best devices-per-run; proven-zero terms rest for a few scans. */
+   function pickDiscoveryTerms(history, pool, max) {
+     var h = history || {}, scans = h.__scans || 0, picks = [];
+     var rows = pool.map(function (k, i) {
+@@ -55,6 +55,11 @@
+     });
+     rows = rows.filter(function (r) { return !r.resting; });
+     rows.sort(function (a, b) { return (b.score - a.score) || (a.runs - b.runs) || (a.i - b.i); });
++    // Reserve the first slot for the best term that has actually produced local devices, so exploration never crowds out what works.
++    var proven = rows.filter(function (r) { return r.runs > 0 && r.score > 0 && r.score !== Infinity; });
++    proven.sort(function (a, b) { return (b.score - a.score) || (a.i - b.i); });
++    var best = max >= 2 && proven.length ? proven[0] : null;
++    if (best) { picks.push(best.k); rows = rows.filter(function (r) { return r !== best; }); max -= 1; }
+     rows.slice(0, Math.max(0, max)).forEach(function (r) { picks.push(r.k); });
+     return picks;
+   }
+diff --git a/plan.js b/plan.js
+new file mode 100644
+index 0000000..2e2830e
+--- /dev/null
++++ b/plan.js
+@@ -0,0 +1,82 @@
++/* FlipRadar scan planning (pure; no DOM, no network).
++ * - buildScanPlan: which paid searches a scan will run, bounded and costed BEFORE anything is charged.
++ * - buildCategoryUrl: experimental Marketplace category URL builder (never used by the normal scanner).
++ * - learnLocationIds: remembers Facebook location ids seen in scan results (free; no extra request).
++ * Browser: window.FRPlan. Node: require("./plan.js").
++ */
++(function (root, factory) {
++  if (typeof module === "object" && module.exports) module.exports = factory(require("./discovery.js"));
++  else root.FRPlan = factory(root.FRDiscovery);
++})(typeof self !== "undefined" ? self : this, function (D) {
++  var BRAND_TERMS = ["iphone", "samsung", "redmi"];
++  var BROAD_POOL = ["phone", "cellphone", "android", "smartphone", "128gb", "256gb", "5g"];
++  var ITEMS_PER_SEARCH = 48;           // one page returned 48 listings in every logged scan (observed, not guaranteed)
++  var HARD_MAX_SEARCHES = 12;          // absolute ceiling regardless of settings
++
++  function clampMax(n, fallback) {
++    n = Math.floor(Number(n));
++    if (!Number.isFinite(n) || n < 1) n = fallback;
++    return Math.min(n, HARD_MAX_SEARCHES);
++  }
++
++  /* opts: { category, kw, allBrand, includeBrands, history, maxSearches, discMax }
++   * kw is the legacy keyword map (e.g. {Phones:[...], Laptops:[...]}). category "" means every category. */
++  function buildScanPlan(opts) {
++    var o = opts || {}, kw = o.kw || {}, max = clampMax(o.maxSearches, 6), terms = [], trimmed = [];
++    var phones = o.category === "Phones" && o.allBrand !== false;
++    if (phones) {
++      var broad = D.pickDiscoveryTerms(o.history || {}, BROAD_POOL, clampMax(o.discMax, 3));
++      broad.forEach(function (k) { terms.push({ k: k, disc: true, source: "broad" }); });
++      if (o.includeBrands !== false) BRAND_TERMS.forEach(function (k) {
++        if (!terms.some(function (t) { return t.k === k; })) terms.push({ k: k, disc: true, source: "brand" });
++      });
++    } else {
++      var cats = o.category ? [o.category] : Object.keys(kw), seen = {};
++      cats.forEach(function (c) { (kw[c] || []).forEach(function (k) { if (!seen[k]) { seen[k] = 1; terms.push({ k: k, disc: false, source: "category-default" }); } }); });
++    }
++    if (terms.length > max) { trimmed = terms.slice(max).map(function (t) { return t.k; }); terms = terms.slice(0, max); }
++    var requests = terms.length, items = requests * ITEMS_PER_SEARCH;
++    return { category: o.category || "All", terms: terms, requests: requests, maxSearches: max, trimmed: trimmed,
++             estimatedItems: items, estimatedCostUsd: D.estimateCostUsd(items, requests),
++             note: "Cost is an ESTIMATE from the actor price list (about " + ITEMS_PER_SEARCH + " listings per search); it is not a billing limit." };
++  }
++
++  function planSummary(plan) {
++    var names = plan.terms.map(function (t) { return t.k; }).join(", ");
++    return plan.requests + " paid search" + (plan.requests === 1 ? "" : "es") + " (" + names + ") · about $" + plan.estimatedCostUsd.toFixed(2) + " estimated"
++      + (plan.trimmed.length ? " · limit reached, skipped: " + plan.trimmed.join(", ") : "");
++  }
++
++  /* ---- Experimental category URL (needs owner approval to run; see ISSUES.md FR-017) ---- */
++  var ID_RX = /^[A-Za-z0-9_.-]{2,60}$/, SLUG_RX = /^[a-z0-9-]{2,40}$/;
++  function buildCategoryUrl(o) {
++    o = o || {};
++    if (!ID_RX.test(String(o.locationId || "")) || /\.\./.test(o.locationId)) throw new Error("Invalid Facebook location id");
++    var cat = String(o.category || "electronics");
++    if (!SLUG_RX.test(cat)) throw new Error("Invalid category slug");
++    var q = [];
++    if (o.sortBy) { if (!/^[a-z_]{3,40}$/.test(o.sortBy)) throw new Error("Invalid sort"); q.push("sortBy=" + o.sortBy); }
++    if (Number.isFinite(Number(o.radiusKm)) && Number(o.radiusKm) > 0) q.push("radius_in_km=" + Math.round(Number(o.radiusKm)));
++    if (o.includeCoords && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lon)))
++      q.push("latitude=" + Number(o.lat).toFixed(5), "longitude=" + Number(o.lon).toFixed(5));   // parameter names are UNVERIFIED
++    if (o.days && /^(1|7|30)$/.test(String(o.days))) q.push("daysSinceListed=" + o.days);
++    return "https://www.facebook.com/marketplace/" + o.locationId + "/" + cat + (q.length ? "?" + q.join("&") : "");
++  }
++
++  /* existing: {townKey: {vanity, cityPageId, n}}; listings: cleaned listings with lv (location_vanity_or_id) and cp (city_page.id). */
++  function learnLocationIds(existing, listings, isLocal) {
++    var out = JSON.parse(JSON.stringify(existing || {}));
++    (listings || []).forEach(function (l) {
++      if (!isLocal(l) || (!l.lv && !l.cp)) return;
++      var key = String(l.c || "").trim().toLowerCase(); if (!key) return;
++      var e = out[key] || { vanity: "", cityPageId: "", n: 0, counts: {} };
++      var tag = (l.lv || "") + "|" + (l.cp || ""); e.counts[tag] = (e.counts[tag] || 0) + 1; e.n++;
++      var best = Object.keys(e.counts).sort(function (a, b) { return e.counts[b] - e.counts[a]; })[0].split("|");
++      e.vanity = best[0]; e.cityPageId = best[1]; out[key] = e;
++    });
++    return out;
++  }
++
++  return { buildScanPlan: buildScanPlan, planSummary: planSummary, buildCategoryUrl: buildCategoryUrl, learnLocationIds: learnLocationIds,
++           BRAND_TERMS: BRAND_TERMS, BROAD_POOL: BROAD_POOL, ITEMS_PER_SEARCH: ITEMS_PER_SEARCH, HARD_MAX_SEARCHES: HARD_MAX_SEARCHES };
++});
+diff --git a/tests/discovery.test.js b/tests/discovery.test.js
+index 81cccb1..fb18ab0 100644
+--- a/tests/discovery.test.js
++++ b/tests/discovery.test.js
+@@ -23,14 +23,13 @@ test("untried terms are explored first, in pool order", () => {
+   assert.deepStrictEqual(D.pickDiscoveryTerms({}, POOL, 3), ["phone", "cellphone", "android"]);
+ });
+ 
+-test("after a scan, proven performers outrank untried-last but untried still go first", () => {
++test("after a scan the best proven term keeps one slot and the rest explore untried terms", () => {
+   let h = D.recordScan({}, D.computeYield([
+     { k: "phone", raw: 48, listings: [mk(1, false)] },
+     { k: "cellphone", raw: 48, listings: [mk(2, true), mk(3, true), mk(4, true)] },
+   ]));
+   const picks = D.pickDiscoveryTerms(h, POOL, 3);
+-  assert.deepStrictEqual(picks.slice(0, 2), ["android", "128gb"]);   // untried first
+-  assert.ok(picks.includes("cellphone") || picks.length === 3);
++  assert.deepStrictEqual(picks, ["cellphone", "android", "128gb"]);  // best proven term keeps a slot, then untried terms explore
+   h = D.recordScan(h, D.computeYield([{ k: "android", raw: 1, listings: [] }, { k: "128gb", raw: 1, listings: [] }, { k: "256gb", raw: 1, listings: [] }]));
+   const next = D.pickDiscoveryTerms(h, POOL, 1);
+   assert.deepStrictEqual(next, ["cellphone"]);                       // best devices per run
+@@ -67,3 +66,9 @@ test("summarizeHistory reports devices per run and flags proven-zero terms", ()
+   assert.strictEqual(s[0].k, "cellphone");
+   assert.strictEqual(s.find(r => r.k === "256gb").provenZero, true);
+ });
++
++test("one slot explores; two or more slots always protect the proven winner", () => {
++  const h = D.recordScan({}, D.computeYield([{ k: "cellphone", raw: 48, listings: [mk(1, true), mk(2, true)] }]));
++  assert.deepStrictEqual(D.pickDiscoveryTerms(h, POOL, 1), ["phone"], "first untried term in pool order");
++  assert.strictEqual(D.pickDiscoveryTerms(h, POOL, 2)[0], "cellphone");
++});
+diff --git a/tests/plan.test.js b/tests/plan.test.js
+new file mode 100644
+index 0000000..3bcf375
+--- /dev/null
++++ b/tests/plan.test.js
+@@ -0,0 +1,72 @@
++const test = require("node:test");
++const assert = require("node:assert");
++const P = require("../plan.js");
++const D = require("../discovery.js");
++const KW = { Phones: ["iphone", "samsung", "redmi"], Laptops: ["laptop"], Consoles: ["ps5", "ps4", "switch"] };
++
++test("Phones all-brand plan: 3 broad + 3 brand searches, all without a title-keyword gate, cost shown", () => {
++  const p = P.buildScanPlan({ category: "Phones", kw: KW, allBrand: true, includeBrands: true, history: {}, maxSearches: 6, discMax: 3 });
++  assert.strictEqual(p.requests, 6);
++  assert.deepStrictEqual(p.terms.map(t => t.source), ["broad", "broad", "broad", "brand", "brand", "brand"]);
++  assert.ok(p.terms.every(t => t.disc === true), "no search may require its keyword in the title");
++  assert.strictEqual(p.estimatedCostUsd, D.estimateCostUsd(6 * 48, 6));
++  assert.ok(/ESTIMATE/.test(p.note) && /not a billing limit/.test(p.note));
++});
++
++test("the request count never exceeds the user's limit and brand searches are trimmed first", () => {
++  const p = P.buildScanPlan({ category: "Phones", kw: KW, allBrand: true, includeBrands: true, history: {}, maxSearches: 4, discMax: 3 });
++  assert.strictEqual(p.requests, 4);
++  assert.deepStrictEqual(p.terms.map(t => t.k), ["phone", "cellphone", "android", "iphone"]);
++  assert.deepStrictEqual(p.trimmed, ["samsung", "redmi"]);
++  assert.ok(/skipped: samsung, redmi/.test(P.planSummary(p)));
++});
++
++test("hard ceiling applies even if a huge limit is requested", () => {
++  const p = P.buildScanPlan({ category: "Phones", kw: KW, allBrand: true, includeBrands: true, history: {}, maxSearches: 500, discMax: 500 });
++  assert.ok(p.requests <= P.HARD_MAX_SEARCHES);
++});
++
++test("brand searches can be turned off; adaptive history changes which broad terms run", () => {
++  let h = D.recordScan({}, D.computeYield([{ k: "phone", raw: 48, listings: [] }, { k: "cellphone", raw: 48, listings: [{ id: 1, local: true, device: true }] }]));
++  const p = P.buildScanPlan({ category: "Phones", kw: KW, allBrand: true, includeBrands: false, history: h, maxSearches: 6, discMax: 3 });
++  assert.ok(p.terms.every(t => t.source === "broad"));
++  assert.strictEqual(p.terms.length, 3);
++  assert.ok(p.terms.map(t => t.k).includes("cellphone"));
++});
++
++test("other categories keep their legacy keyword plan; 'All' is de-duplicated and costed", () => {
++  const lap = P.buildScanPlan({ category: "Laptops", kw: KW, history: {}, maxSearches: 6 });
++  assert.deepStrictEqual(lap.terms.map(t => [t.k, t.disc]), [["laptop", false]]);
++  const all = P.buildScanPlan({ category: "", kw: KW, history: {}, maxSearches: 12 });
++  assert.strictEqual(all.requests, 7);
++  assert.strictEqual(all.category, "All");
++});
++
++test("all-brand can be switched off to restore the old three-brand scan", () => {
++  const p = P.buildScanPlan({ category: "Phones", kw: KW, allBrand: false, history: {}, maxSearches: 6 });
++  assert.deepStrictEqual(p.terms.map(t => t.k), ["iphone", "samsung", "redmi"]);
++  assert.ok(p.terms.every(t => t.disc === false));
++});
++
++test("category URL builder: accepts valid ids, uses documented radius_in_km, rejects injection", () => {
++  const u = P.buildCategoryUrl({ locationId: "108424279189115", category: "electronics", radiusKm: 60, sortBy: "distance_ascend", days: 7 });
++  assert.strictEqual(u, "https://www.facebook.com/marketplace/108424279189115/electronics?sortBy=distance_ascend&radius_in_km=60&daysSinceListed=7");
++  assert.throws(() => P.buildCategoryUrl({ locationId: "evil.com/../x", category: "electronics" }));
++  assert.throws(() => P.buildCategoryUrl({ locationId: "ok", category: "a b" }));
++  assert.throws(() => P.buildCategoryUrl({ locationId: "", category: "electronics" }));
++  assert.throws(() => P.buildCategoryUrl({ locationId: "nyc", category: "electronics", sortBy: "x&y=1" }));
++  const c = P.buildCategoryUrl({ locationId: "nyc", category: "electronics", includeCoords: true, lat: 9.6625, lon: 123.8663 });
++  assert.ok(c.includes("latitude=9.66250") && c.includes("longitude=123.86630"));
++  assert.ok(!P.buildCategoryUrl({ locationId: "nyc", category: "electronics", lat: 9.66, lon: 123.86 }).includes("latitude"), "coordinates only when explicitly requested");
++});
++
++test("learnLocationIds records the most common Facebook location id for local towns only", () => {
++  const isLocal = l => l.local;
++  let m = P.learnLocationIds({}, [
++    { c: "Tagbilaran City", lv: "tagbilaran", cp: "111", local: true }, { c: "Tagbilaran City", lv: "tagbilaran", cp: "111", local: true },
++    { c: "Tagbilaran City", lv: "other", cp: "222", local: true }, { c: "Cebu City", lv: "cebu", cp: "999", local: false },
++    { c: "Baclayon", local: true },
++  ], isLocal);
++  assert.deepStrictEqual(Object.keys(m), ["tagbilaran city"]);
++  assert.deepStrictEqual([m["tagbilaran city"].vanity, m["tagbilaran city"].cityPageId, m["tagbilaran city"].n], ["tagbilaran", "111", 3]);
++});
+-- 
+2.43.0
+

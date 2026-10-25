@@ -1,0 +1,90 @@
+From 7a37c26afab4d95726aae9aaa597677c29ae8482 Mon Sep 17 00:00:00 2001
+From: FlipRadar-dev-Claude <dev@example.invalid>
+Date: Sun, 25 Oct 2026 15:51:16 +0000
+Subject: [PATCH 1/7] Classify phones from any brand by specs; keep
+ unrecognised titles reviewable
+
+---
+ classify.js            |  9 +++++++--
+ tests/classify.test.js | 34 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 2 deletions(-)
+
+diff --git a/classify.js b/classify.js
+index df159c4..9111854 100644
+--- a/classify.js
++++ b/classify.js
+@@ -28,7 +28,8 @@
+     wearable: /\b(smart ?watch|galaxy watch|apple watch|watch \d|band \d|galaxy fit|amazfit|mi band)\b|\bwatch\b/,
+     laptop: /\b(laptop|macbook|notebook|thinkpad|vivobook|ideapad|chromebook|legion|nitro)\b/,
+     console: /\b(ps5|ps4|ps3|playstation|xbox|nintendo|switch|steam deck|rog ally)\b/,
+-    otherKind: /\b(monitors?|refrigerators?|ref|tv|television|washing machine|aircon|air ?conditioner|microwave|soundbar|printer|projector|rice cooker|oven|freezer|electric fan|router|dslr|mirrorless|gopro|cctv|webcam|drone|rtx|gtx|ryzen|motherboard|ssd|nvme|gpu|ddr[2345]|sodimm|dimm)\b/,
++    otherKind: /\b(monitors?|refrigerators?|ref|tv|television|washing machine|aircon|air ?conditioner|microwave|soundbar|printer|projector|rice cooker|oven|freezer|electric fan|router|dslr|mirrorless|gopro|cctv|webcam|drone|rtx|gtx|ryzen|motherboard|ssd|nvme|gpu|ddr[2345]|sodimm|dimm|sandisk|kingston|lexar|transcend|seagate|microsd|flash drive|pen ?drive|hdd|sata|m\.2)\b/,
++    phoneSpec: /\b(?:\d{1,2}\s?[+\/]\s?(?:64|128|256|512)|\d{1,2}\s?gb\s*(?:ram)?\s*[+\/&,|-]?\s*(?:64|128|256|512|1024)\s?gb|\d{1,2}\s?gb\s*ram|ram\s*\d{1,2}\s?gb|5g|4g|lte|dual ?sim|nano ?sim|openline|unlocked|amoled|oled|super retina|fingerprint|face ?id|\d{4,5}\s?mah|snapdragon|dimensity|helio|exynos|bionic|android|rugged phone)\b/,
+     phoneWord: /\b(cell ?phones?|smart ?phones?|mobile phones?|android phones?|phones?|cp|unit)\b/,
+     model: new RegExp("\\b(?:" + BRANDS + ")(?![a-z])(?:\\s+[a-z]{1,10}){0,3}?[\\s-]*[a-z]?\\d{1,3}[a-z+]{0,4}|\\b(?:iphone|samsung|galaxy|redmi|poco|realme|oppo|vivo|infinix|tecno)[a-z]?\\d{1,3}"),
+     iphoneModel: /\b(?:iphone|ip)\s*(?:\d{1,2}|x[rs]?|se|xs max)\b/
+@@ -55,7 +56,10 @@
+     if (RX.wearable.test(t) && !/\b(phone|iphone)\b/.test(t)) return "wearable";
+     if (RX.otherKind.test(t)) return "other";
+     if (hasModel(t) || RX.phoneWord.test(t) || new RegExp("\\b(?:" + BRANDS + ")(?![a-z])").test(t)) return "phone";
+-    return "other";
++    // Brand-independent: a storage size plus a phone-like spec ("12/256", "5G", "dual sim", "5000mAh") identifies phones from any maker.
++    if (hasStorage(t) && RX.phoneSpec.test(t)) return "phone";
++    // Nothing recognisable at all: keep it reviewable instead of calling it a non-phone.
++    return "unknown";
+   }
+ 
+   function classify(title, price) {
+@@ -83,6 +87,7 @@
+     }
+ 
+     // 4. Non-phone devices are genuine items for sale, just not phones.
++    if (kind === "unknown") return out("review", "Device type not recognised");
+     if (kind !== "phone") return out("device", "Not a phone (" + kind + ")");
+ 
+     // 5. Phones: need a model or storage to count as a clearly identified device.
+diff --git a/tests/classify.test.js b/tests/classify.test.js
+index 510bc36..6471ba8 100644
+--- a/tests/classify.test.js
++++ b/tests/classify.test.js
+@@ -95,3 +95,37 @@ test("very low price phone goes to review instead of being discarded", () => {
+   assert.strictEqual(r.cls, "review");
+   assert.ok(r.flags.includes("very-low-price"));
+ });
++
++// ---- Phase 3: brand independence. These makers are NOT in the brand list; only specs identify them. ----
++const UNCOMMON_BRAND_PHONES = [
++  "Ulefone Armor 25 5G 12/256", "Doogee S100 Pro 12GB 256GB", "Blackview BV9300 rugged phone 12/256",
++  "Cubot KingKong X 8/256 5G", "Oukitel WP52 rugged 5G 12/256", "UMIDIGI G9 5G 8/128", "Meizu 21 12/256 5G",
++  "Lava Blaze 5G 6/128", "Fairphone 5 8/256", "Sharp Aquos R9 12/256", "HMD Fusion 8/256", "Nothing Phone (3a) 8/256",
++  "Tecno Pova 7 Pro 5G", "Itel A90 4/64", "Realme GT 7 Pro 12+256", "Honor Magic7 Pro 12/512", "Infinix GT 30 Pro 5G 8/256",
++  "Xiaomi 15T 12/512", "Oppo Reno14 5G 8+256", "vivo V60 12/256", "Zeblaze Stratos phone 4G dual sim 64GB",
++];
++for (const title of UNCOMMON_BRAND_PHONES) {
++  test(`all-brand: ${title} is a phone device`, () => {
++    const r = classify(title, 9000);
++    assert.strictEqual(r.kind, "phone", `kind=${r.kind} (${r.reason})`);
++    assert.strictEqual(r.cls, "device", `cls=${r.cls} (${r.reason})`);
++  });
++}
++
++test("all-brand: unrecognised brand without any spec is kept for review, never silently called a non-phone", () => {
++  const r = classify("Ulefone Armor 25", 9000);
++  assert.strictEqual(r.kind, "unknown");
++  assert.strictEqual(r.cls, "review");
++});
++
++test("all-brand: storage products from storage makers are not phones", () => {
++  for (const title of ["Samsung 980 Pro 1TB NVMe SSD", "SanDisk Ultra 256GB microSD", "Kingston 128GB flash drive", "Seagate 1TB HDD external", "Crucial 16gb DDR4 RAM"]) {
++    assert.strictEqual(classify(title, 2500).kind, "other", title);
++  }
++});
++
++test("all-brand: unknown-brand accessories and wanted ads are still rejected", () => {
++  assert.strictEqual(classify("Ulefone Armor 25 case", 400).cls, "accessory");
++  assert.strictEqual(classify("WTB Doogee S100 Pro", 0).cls, "wanted");
++  assert.strictEqual(classify("Cubot phone repair service", 300).cls, "repair");
++});
+-- 
+2.43.0
+
