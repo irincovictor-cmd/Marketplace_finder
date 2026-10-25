@@ -1,0 +1,23 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Syntax check (no build step; GitHub Pages serves the files as they are)
+        run: |
+          for f in classify.js discovery.js plan.js nav.js seen.js; do node --check "$f"; done
+          node -e "const s=require('fs').readFileSync('index.html','utf8');const m=[...s.matchAll(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g)].map(x=>x[1]).sort((a,b)=>b.length-a.length)[0];require('fs').writeFileSync('/tmp/app.js',m)"
+          node --check /tmp/app.js
+      - name: Run tests
+        run: npm test
