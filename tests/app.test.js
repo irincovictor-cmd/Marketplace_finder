@@ -38,7 +38,8 @@ test("clean() tags listings and keeps repair/wanted ads inspectable instead of s
   assert.strictEqual(byId.f2.cls, "repair");
   assert.strictEqual(byId.f3.cls, "wanted");
   assert.strictEqual(byId.f4.cls, "review");
-  assert.strictEqual(byId.f5, undefined, "existing accessory-word prefilter still applies");
+  assert.strictEqual(byId.f5.cls, "accessory", "phone searches keep accessories as tagged, inspectable rows instead of silently deleting them");
+  assert.strictEqual(run("clean(__raw,'iphone',null,false)").some(l => l.id === "f5"), false, "non-phone categories keep the legacy accessory-word prefilter");
   assert.deepStrictEqual(run("[notDevice({cls:'repair'}),notDevice({cls:'review'}),notDevice({cls:'device'}),notDevice({})]"), [true, false, false, false]);
 });
 
@@ -230,7 +231,7 @@ test("mocked scan: classification, dedupe, report, keyword history and result fi
 test("rendering: Search view and result breakdown include the new controls and the device stage", async () => {
   const { run, els } = await loadApp();
   const html = run("vSearch()");
-  for (const id of ["opt-near", "opt-disc", "opt-strict", "probe-sort", "usage-report"]) assert.ok(html.includes(id), id + " present");
+  for (const id of ["opt-near", "opt-allbrand", "opt-brands", "opt-maxsearch", "opt-hideviewed", "opt-strict", "probe-sort", "usage-report", "scan-plan"]) assert.ok(html.includes(id), id + " present");
   run("S.live=[{id:'a',t:'Redmi A7 Pro 64GB',p:3700,g:'Phones',cls:'device',c:'Baclayon',province:'PH-07',h:2,fl:[]},{id:'b',t:'Cellphone',p:1500,g:'Phones',cls:'review',cr:'No model or storage identified',c:'Tagbilaran City',province:'PH-07',h:1,fl:[]}];S.cat='Phones';S.province='Bohol';S.radius=60;S.max='20000';S.q=''");
   run("res()");
   assert.ok(/device listings 2/.test(els.breakdown.textContent), els.breakdown.textContent);
