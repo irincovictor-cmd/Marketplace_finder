@@ -368,3 +368,12 @@ Backlog only; not deployed. Future photo-based device identification, listing in
 - `Needs location verification (20)` screenshot includes ambiguous Talisay, Cortes, Maria and Getafe entries. Some are Bohol municipality names but also exist elsewhere; keep unverified unless province corroborated. Avoid blanket auto-classification.
 - Actor request used `distance_ascend`, `strictFiltering:false`. Cost `$0.1443` is an **estimate**, not billed amount; historical `apify_usage` was a separate older lookup. Do not claim zero-cost scans.
 - Historical errors in 100-event export: 2026-10-23 `Failed to fetch` category test and `Could not reach Apify` keyword request. **No errors recorded in latest scan.** Older category URL experiment returned California results, not validated as supported geographic category filtering.
+
+
+## October 26 — stored listing search, viewed retention, repost grouping
+
+- **Implemented in index.html:** Search previously scanned items using a separate local-only text field. It searches stored listing titles, town names and prices, including results outside current browse filters. It does not call Apify or Facebook.
+- **Implemented:** Viewed items display **SEEN** instead of NEW. Opening an item automatically disables the optional "Hide listings I have already opened" setting so Back does not silently remove the card. The original setting can be re-enabled manually.
+- **Implemented:** Nearby results and stored-item search group likely reposts with identical normalized titles and towns, display the newest available Marketplace creation time as primary, and expose related prices/Marketplace links in expandable sections. This is **heuristic grouping**, not confirmed identity matching; different items with the same title and town can be grouped. If timestamps are absent, first-seen time is only a fallback, not proof of newer posting.
+- **Important limitations:** Local search covers only listings retained in the browser's fr_live cache (maximum 800), not every historic listing ever scanned. It cannot recover expired or evicted listings. Grouping is currently limited to exact normalized title + town; near-duplicates with slightly changed titles remain separate.
+- **Pending device tests:** Check back navigation/scroll restoration, SEEN persistence after reload, repost group ordering and false merges, search while typing, location-review duplicates, and New-first order after a subsequent scan. No paid Apify test was run.
